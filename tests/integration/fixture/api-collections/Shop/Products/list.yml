@@ -1,0 +1,11 @@
+info:
+  name: list
+  type: http
+http:
+  method: GET
+  url: "{{baseUrl}}/products"
+  params:
+    - name: limit
+      value: "5"
+      type: query
+  auth: inherit

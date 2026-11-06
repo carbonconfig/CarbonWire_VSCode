@@ -1,0 +1,10 @@
+opencollection: 1.0.0
+info:
+  name: Shop
+request:
+  headers:
+    - name: X-Collection
+      value: shop
+  auth:
+    type: bearer
+    token: "{{token}}"

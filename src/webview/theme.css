@@ -1,0 +1,293 @@
+/*
+ * Defines the theme variables and base classes the views use from VS Code's theme, so every
+ * theme applies, including high contrast.
+ */
+
+:root {
+	--size-2-1: 2px;
+	--size-2-2: 4px;
+	--size-2-3: 6px;
+	--size-4-1: 4px;
+	--size-4-2: 8px;
+	--size-4-3: 12px;
+	--size-4-4: 16px;
+	--size-4-6: 24px;
+	--radius-s: 2px;
+	--radius-m: 4px;
+	--input-height: 26px;
+	--icon-xs: 14px;
+	--icon-s: 16px;
+	--layer-popover: 30;
+
+	--font-interface: var(--vscode-font-family);
+	--font-monospace: var(--vscode-editor-font-family);
+	--font-ui-smaller: calc(var(--vscode-font-size) - 2px);
+	--font-ui-small: var(--vscode-font-size);
+	--font-ui-medium: calc(var(--vscode-font-size) + 1px);
+	--font-normal: 400;
+	--font-semibold: 600;
+	--font-bold: 700;
+	--code-size: var(--vscode-editor-font-size);
+
+	--text-normal: var(--vscode-foreground);
+	--text-muted: var(--vscode-descriptionForeground);
+	--text-faint: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+	--text-on-accent: var(--vscode-button-foreground);
+	--text-error: var(--vscode-errorForeground);
+	--text-selection: var(--vscode-editor-selectionBackground);
+	--text-highlight-bg: var(--vscode-editor-findMatchHighlightBackground);
+	--text-highlight-bg-active: var(--vscode-editor-findMatchBackground);
+	--caret-color: var(--vscode-editorCursor-foreground);
+	--interactive-accent: var(--vscode-focusBorder);
+
+	--background-primary: var(--vscode-editor-background);
+	--background-modifier-form-field: var(--vscode-input-background);
+	--background-secondary: var(--vscode-sideBar-background, var(--vscode-editor-background));
+	--background-modifier-border: var(--vscode-widget-border, var(--vscode-panel-border, transparent));
+	--background-modifier-hover: var(--vscode-list-hoverBackground);
+	--background-modifier-error: var(--vscode-inputValidation-errorBackground, var(--vscode-errorForeground));
+	--background-modifier-message: var(--vscode-inputValidation-infoBackground, var(--vscode-editorWidget-background));
+	--shadow-s: 0 2px 8px var(--vscode-widget-shadow, transparent);
+	--nav-indentation-guide-color: var(--vscode-tree-indentGuidesStroke);
+	--nav-indentation-guide-width: 1px;
+
+	--code-background: var(--vscode-editor-background);
+	--code-property: var(--vscode-debugTokenExpression-name, var(--vscode-symbolIcon-propertyForeground));
+	--code-string: var(--vscode-debugTokenExpression-string);
+	--code-value: var(--vscode-debugTokenExpression-number);
+	--code-keyword: var(--vscode-debugTokenExpression-boolean);
+	--code-punctuation: var(--vscode-foreground);
+
+	--color-red: var(--vscode-charts-red);
+	--color-orange: var(--vscode-charts-orange);
+	--color-yellow: var(--vscode-charts-yellow);
+	--color-green: var(--vscode-charts-green);
+	--color-blue: var(--vscode-charts-blue);
+	--color-purple: var(--vscode-charts-purple);
+	--color-cyan: var(--vscode-terminal-ansiCyan, var(--vscode-charts-blue));
+}
+
+/* Native controls, such as a select's list and scrollbars, follow the theme's brightness. */
+body.vscode-light,
+body.vscode-high-contrast-light {
+	color-scheme: light;
+}
+body.vscode-dark,
+body.vscode-high-contrast {
+	color-scheme: dark;
+}
+
+/* Base styles sit in a layer, so the views' own styles always win over them. */
+@layer base {
+	/* VS Code gives webviews a body padding of its own; views lay themselves out. */
+	html,
+	body {
+		height: 100%;
+		margin: 0;
+		padding: 0;
+		overflow: hidden;
+		color: var(--vscode-foreground);
+		font-family: var(--vscode-font-family);
+		font-size: var(--vscode-font-size);
+	}
+
+	*:focus-visible {
+		outline: 1px solid var(--vscode-focusBorder);
+		outline-offset: -1px;
+	}
+
+	.carbonwire-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.carbonwire-icon svg {
+		width: var(--icon-s);
+		height: var(--icon-s);
+	}
+
+	/* Buttons and icon buttons, as VS Code draws them. */
+	button {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--size-2-2);
+		padding: 4px 10px;
+		border: 1px solid var(--vscode-button-border, transparent);
+		border-radius: var(--radius-s);
+		background: var(--vscode-button-secondaryBackground);
+		color: var(--vscode-button-secondaryForeground);
+		font: inherit;
+		cursor: pointer;
+	}
+	button:hover:not(:disabled) {
+		background: var(--vscode-button-secondaryHoverBackground);
+	}
+	button.mod-cta {
+		padding: 4px 12px;
+		border: 1px solid var(--vscode-button-border, transparent);
+		border-radius: var(--radius-s);
+		background: var(--vscode-button-background);
+		color: var(--vscode-button-foreground);
+		cursor: pointer;
+	}
+	button.mod-cta:hover {
+		background: var(--vscode-button-hoverBackground);
+	}
+	.clickable-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 3px;
+		border: none;
+		border-radius: 5px;
+		background: transparent;
+		color: var(--vscode-icon-foreground);
+		cursor: pointer;
+	}
+	.clickable-icon:hover:not(:disabled) {
+		background: var(--vscode-toolbar-hoverBackground);
+	}
+	.clickable-icon:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	/* Text inputs, dropdowns and the filter box. */
+	input[type="search"],
+	input[type="text"],
+	input[type="password"],
+	input[type="number"],
+	input[type="url"],
+	input:not([type]),
+	textarea,
+	select {
+		box-sizing: border-box;
+		height: var(--input-height);
+		padding: 0 6px;
+		border: 1px solid var(--vscode-input-border, transparent);
+		border-radius: var(--radius-s);
+		background: var(--vscode-input-background);
+		color: var(--vscode-input-foreground);
+		font: inherit;
+	}
+	textarea {
+		height: auto;
+		padding: 4px 6px;
+	}
+	select {
+		padding: 0 4px;
+		border-color: var(--vscode-dropdown-border, var(--vscode-input-border, transparent));
+		background: var(--vscode-dropdown-background);
+		color: var(--vscode-dropdown-foreground);
+	}
+	input[type="checkbox"] {
+		accent-color: var(--vscode-focusBorder);
+	}
+	input::placeholder,
+	textarea::placeholder {
+		color: var(--vscode-input-placeholderForeground);
+	}
+	input:focus,
+	textarea:focus,
+	select:focus {
+		outline: 1px solid var(--vscode-focusBorder);
+		outline-offset: -1px;
+	}
+	input[type="search"]::-webkit-search-cancel-button {
+		display: none;
+	}
+	.search-input-container {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+	.search-input-clear-button {
+		position: absolute;
+		inset-inline-end: 2px;
+		padding: 2px;
+	}
+
+	/* Tree rows, as in VS Code's own trees. */
+	.tree-item-self {
+		box-sizing: border-box;
+		min-height: 22px;
+		padding: 0 4px;
+		border: 1px solid transparent;
+		line-height: 20px;
+		cursor: pointer;
+		user-select: none;
+	}
+	.tree-item-self:hover {
+		background: var(--vscode-list-hoverBackground);
+		color: var(--vscode-list-hoverForeground, inherit);
+	}
+	.tree-item-self.is-active {
+		background: var(--vscode-list-inactiveSelectionBackground);
+		color: var(--vscode-list-inactiveSelectionForeground, inherit);
+	}
+	.tree-item-self:focus-visible {
+		outline: none;
+		border-color: var(--vscode-list-focusOutline, var(--vscode-focusBorder));
+	}
+	.collapse-icon {
+		flex: 0 0 auto;
+		transition: transform 100ms ease-in-out;
+	}
+	.collapse-icon.is-collapsed {
+		transform: rotate(-90deg);
+	}
+
+	/* The sidebar's section headers and tabs follow VS Code's pane headers. */
+	.carbonwire-section-header {
+		min-height: 22px;
+	}
+	.carbonwire-section-tabs {
+		display: flex;
+		flex: 1 1 auto;
+		gap: var(--size-4-2);
+	}
+	.carbonwire-section-tabs button {
+		padding: 2px 0;
+		border: none;
+		border-bottom: 1px solid transparent;
+		background: none;
+		color: var(--vscode-descriptionForeground);
+		font-size: var(--font-ui-smaller);
+		font-weight: var(--font-semibold);
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+	.carbonwire-section-tabs button.is-active {
+		border-bottom-color: var(--vscode-panelTitle-activeBorder, var(--vscode-focusBorder));
+		color: var(--vscode-foreground);
+	}
+	.carbonwire-no-workspace {
+		padding: var(--size-4-3);
+		text-align: start;
+	}
+
+	.carbonwire-tab-message {
+		padding: var(--size-4-3);
+	}
+
+	/* High contrast themes draw hover, selection and controls with outlines instead of fills. */
+	body.vscode-high-contrast .tree-item-self:hover,
+	body.vscode-high-contrast-light .tree-item-self:hover {
+		outline: 1px dashed var(--vscode-contrastActiveBorder);
+		outline-offset: -1px;
+	}
+	body.vscode-high-contrast .tree-item-self.is-active,
+	body.vscode-high-contrast-light .tree-item-self.is-active {
+		outline: 1px solid var(--vscode-contrastActiveBorder);
+		outline-offset: -1px;
+	}
+	body.vscode-high-contrast button:not(.clickable-icon),
+	body.vscode-high-contrast-light button:not(.clickable-icon) {
+		border-color: var(--vscode-contrastBorder);
+	}
+	body.vscode-high-contrast .clickable-icon:hover:not(:disabled),
+	body.vscode-high-contrast-light .clickable-icon:hover:not(:disabled) {
+		outline: 1px dashed var(--vscode-contrastActiveBorder);
+	}
+}

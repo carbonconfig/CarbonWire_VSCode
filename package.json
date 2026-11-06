@@ -1,0 +1,924 @@
+{
+  "name": "carbonwire",
+  "displayName": "CarbonWire",
+  "description": "Test REST APIs with a fast HTTP client. Send requests, inspect JSON responses, and import collections from Postman, Insomnia, Bruno, HTTPie and curl, kept as plain files in your workspace.",
+  "version": "1.0.0",
+  "publisher": "carbonconfig",
+  "author": "CarbonConfig",
+  "license": "MIT",
+  "private": true,
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#1b1f27",
+    "theme": "dark"
+  },
+  "categories": [
+    "Testing",
+    "Other"
+  ],
+  "keywords": [
+    "rest-client",
+    "api-client",
+    "http-client",
+    "api-testing",
+    "rest-api",
+    "postman",
+    "insomnia",
+    "bruno",
+    "httpie",
+    "hoppscotch",
+    "curl",
+    "opencollection"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carbonconfig/CarbonWire_VSCode.git"
+  },
+  "homepage": "https://github.com/carbonconfig/CarbonWire_VSCode#readme",
+  "bugs": {
+    "url": "https://github.com/carbonconfig/CarbonWire_VSCode/issues"
+  },
+  "qna": "https://github.com/carbonconfig/CarbonWire_VSCode/issues",
+  "engines": {
+    "vscode": "^1.105.0",
+    "node": ">=24"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onWebviewPanel:carbonwire.request",
+    "onWebviewPanel:carbonwire.settings"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "carbonwire",
+          "title": "CarbonWire",
+          "icon": "media/carbonwire.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "carbonwire-console",
+          "title": "CarbonWire",
+          "icon": "media/carbonwire.svg"
+        }
+      ]
+    },
+    "views": {
+      "carbonwire": [
+        {
+          "type": "webview",
+          "id": "carbonwire.sidebar",
+          "name": "Collections"
+        }
+      ],
+      "carbonwire-console": [
+        {
+          "type": "webview",
+          "id": "carbonwire.console",
+          "name": "Console"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "carbonwire.openCollections",
+        "title": "Open collections",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.newCollection",
+        "title": "New collection",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.newEnvironment",
+        "title": "New environment",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.newRequest",
+        "title": "New request",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.sendRequest",
+        "title": "Send request",
+        "category": "CarbonWire",
+        "enablement": "activeWebviewPanelId == 'carbonwire.request'"
+      },
+      {
+        "command": "carbonwire.saveRequest",
+        "title": "Save request",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.findInRequest",
+        "title": "Find in request",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.copyJsonValue",
+        "title": "Copy value",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.copyJsonPath",
+        "title": "Copy path",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.expandJson",
+        "title": "Expand all",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.collapseJson",
+        "title": "Collapse all",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.import",
+        "title": "Import collection, environment or cURL",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.importEnvironment",
+        "title": "Import environment",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.selectEnvironment",
+        "title": "Select environment",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.sortCollections",
+        "title": "Sort collections",
+        "category": "CarbonWire",
+        "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "carbonwire.collapseAll",
+        "title": "Collapse all",
+        "category": "CarbonWire",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "carbonwire.clearHistory",
+        "title": "Clear history",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.openSettings",
+        "title": "Open settings",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.newRequestHere",
+        "title": "New request",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.newFolderHere",
+        "title": "New folder",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.importIntoCollection",
+        "title": "Import into collection…",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.collectionSettings",
+        "title": "Collection settings",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.addCollectionEnvironments",
+        "title": "Add its environments to the shared list",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.renameFolder",
+        "title": "Rename",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.folderSettings",
+        "title": "Folder settings",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.deleteFolder",
+        "title": "Delete",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.openRequest",
+        "title": "Open",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.renameRequest",
+        "title": "Rename",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.duplicateRequest",
+        "title": "Duplicate",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.copyRequestAsCurl",
+        "title": "Copy as cURL",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.deleteRequest",
+        "title": "Delete",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.activateEnvironment",
+        "title": "Activate",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.deactivateEnvironment",
+        "title": "Deactivate",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.editEnvironment",
+        "title": "Edit",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.renameEnvironment",
+        "title": "Rename and colour…",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.duplicateEnvironment",
+        "title": "Duplicate",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.deleteEnvironment",
+        "title": "Delete",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.openHistoryEntry",
+        "title": "Open",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.openHistorySource",
+        "title": "Open saved request",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.copyHistoryAsCurl",
+        "title": "Copy as cURL",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.deleteHistoryEntry",
+        "title": "Delete from history",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.importFromExplorer",
+        "title": "Import into CarbonWire",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.openConsole",
+        "title": "Open console",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.clearConsole",
+        "title": "Clear console",
+        "category": "CarbonWire",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "carbonwire.manageCookies",
+        "title": "Manage cookies",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.clearOAuthTokens",
+        "title": "Clear OAuth 2.0 tokens",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.editGlobals",
+        "title": "Edit globals",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.setProxyPassword",
+        "title": "Set proxy password",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.setCertificatePassphrase",
+        "title": "Set client certificate passphrase",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.exportCollection",
+        "title": "Export…",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.exportEnvironment",
+        "title": "Export…",
+        "category": "CarbonWire"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "carbonwire.new",
+        "label": "New",
+        "icon": "$(add)"
+      },
+      {
+        "id": "carbonwire.importMenu",
+        "label": "Import",
+        "icon": "$(desktop-download)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "submenu": "carbonwire.new",
+          "when": "view == carbonwire.sidebar",
+          "group": "navigation@1"
+        },
+        {
+          "submenu": "carbonwire.importMenu",
+          "when": "view == carbonwire.sidebar",
+          "group": "navigation@2"
+        },
+        {
+          "command": "carbonwire.sortCollections",
+          "when": "view == carbonwire.sidebar",
+          "group": "navigation@3"
+        },
+        {
+          "command": "carbonwire.collapseAll",
+          "when": "view == carbonwire.sidebar",
+          "group": "navigation@4"
+        },
+        {
+          "command": "carbonwire.clearHistory",
+          "when": "view == carbonwire.sidebar",
+          "group": "1_history@1"
+        },
+        {
+          "command": "carbonwire.openSettings",
+          "when": "view == carbonwire.sidebar",
+          "group": "2_settings@1"
+        },
+        {
+          "command": "carbonwire.clearConsole",
+          "when": "view == carbonwire.console",
+          "group": "navigation"
+        }
+      ],
+      "carbonwire.new": [
+        {
+          "command": "carbonwire.newRequest",
+          "group": "1_new@1"
+        },
+        {
+          "command": "carbonwire.newCollection",
+          "group": "1_new@2"
+        },
+        {
+          "command": "carbonwire.newEnvironment",
+          "group": "1_new@3"
+        }
+      ],
+      "carbonwire.importMenu": [
+        {
+          "command": "carbonwire.import",
+          "group": "1_import@1"
+        },
+        {
+          "command": "carbonwire.importEnvironment",
+          "group": "1_import@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "carbonwire.newRequestHere",
+          "when": "webviewId == 'carbonwire.sidebar' && (webviewSection == 'collection' || webviewSection == 'folder' || webviewSection == 'add')",
+          "group": "1_new@1"
+        },
+        {
+          "command": "carbonwire.newFolderHere",
+          "when": "webviewId == 'carbonwire.sidebar' && (webviewSection == 'collection' || webviewSection == 'folder' || webviewSection == 'add')",
+          "group": "1_new@2"
+        },
+        {
+          "command": "carbonwire.importIntoCollection",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'collection'",
+          "group": "2_settings@0"
+        },
+        {
+          "command": "carbonwire.collectionSettings",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'collection'",
+          "group": "2_settings@1"
+        },
+        {
+          "command": "carbonwire.addCollectionEnvironments",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'collection' && hasEnvironments",
+          "group": "2_settings@2"
+        },
+        {
+          "command": "carbonwire.exportCollection",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'collection'",
+          "group": "2_settings@3"
+        },
+        {
+          "command": "carbonwire.renameFolder",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'folder'",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "carbonwire.folderSettings",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'folder'",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "carbonwire.deleteFolder",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'folder'",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "carbonwire.openRequest",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'request'",
+          "group": "1_open@1"
+        },
+        {
+          "command": "carbonwire.renameRequest",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'request'",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "carbonwire.duplicateRequest",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'request'",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "carbonwire.copyRequestAsCurl",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'request'",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "carbonwire.deleteRequest",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'request'",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "carbonwire.activateEnvironment",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'environment' && !active",
+          "group": "1_open@1"
+        },
+        {
+          "command": "carbonwire.deactivateEnvironment",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'environment' && active",
+          "group": "1_open@1"
+        },
+        {
+          "command": "carbonwire.editEnvironment",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'environment'",
+          "group": "1_open@2"
+        },
+        {
+          "command": "carbonwire.renameEnvironment",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'environment'",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "carbonwire.duplicateEnvironment",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'environment'",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "carbonwire.exportEnvironment",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'environment'",
+          "group": "2_edit@3"
+        },
+        {
+          "command": "carbonwire.deleteEnvironment",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'environment'",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "carbonwire.openHistoryEntry",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'history'",
+          "group": "1_open@1"
+        },
+        {
+          "command": "carbonwire.openHistorySource",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'history' && hasSource",
+          "group": "1_open@2"
+        },
+        {
+          "command": "carbonwire.copyHistoryAsCurl",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'history'",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "carbonwire.deleteHistoryEntry",
+          "when": "webviewId == 'carbonwire.sidebar' && webviewSection == 'history'",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "carbonwire.copyJsonValue",
+          "when": "webviewId == 'carbonwire.request' && webviewSection == 'jsonRow'",
+          "group": "1_copy@1"
+        },
+        {
+          "command": "carbonwire.copyJsonPath",
+          "when": "webviewId == 'carbonwire.request' && webviewSection == 'jsonRow'",
+          "group": "1_copy@2"
+        },
+        {
+          "command": "carbonwire.expandJson",
+          "when": "webviewId == 'carbonwire.request' && webviewSection == 'jsonRow' && expandable",
+          "group": "2_tree@1"
+        },
+        {
+          "command": "carbonwire.collapseJson",
+          "when": "webviewId == 'carbonwire.request' && webviewSection == 'jsonRow' && expandable",
+          "group": "2_tree@2"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "carbonwire.importFromExplorer",
+          "when": "explorerResourceIsFolder || resourceExtname =~ /^\\.(json|ya?ml|har|http|rest|bru)$/",
+          "group": "7_modification@9"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "carbonwire.newRequestHere",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.newFolderHere",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.collectionSettings",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.addCollectionEnvironments",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.renameFolder",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.folderSettings",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.deleteFolder",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.openRequest",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.renameRequest",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.duplicateRequest",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.copyRequestAsCurl",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.deleteRequest",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.activateEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.deactivateEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.editEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.renameEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.duplicateEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.deleteEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.openHistoryEntry",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.openHistorySource",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.copyHistoryAsCurl",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.deleteHistoryEntry",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.collapseAll",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.saveRequest",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.findInRequest",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.copyJsonValue",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.copyJsonPath",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.expandJson",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.collapseJson",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.sendRequest",
+          "when": "activeWebviewPanelId == 'carbonwire.request'"
+        },
+        {
+          "command": "carbonwire.importIntoCollection",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.importFromExplorer",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.exportCollection",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.exportEnvironment",
+          "when": "false"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "carbonwire.sendRequest",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "activeWebviewPanelId == 'carbonwire.request'"
+      },
+      {
+        "command": "carbonwire.saveRequest",
+        "key": "ctrl+s",
+        "mac": "cmd+s",
+        "when": "activeWebviewPanelId == 'carbonwire.request'"
+      },
+      {
+        "command": "carbonwire.findInRequest",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeWebviewPanelId == 'carbonwire.request'"
+      }
+    ],
+    "configuration": {
+      "title": "CarbonWire",
+      "properties": {
+        "carbonwire.collectionsFolder": {
+          "type": "string",
+          "default": "api-collections",
+          "markdownDescription": "Where new collections are created, relative to the first workspace folder. Leave empty for the workspace folder itself. Existing collections are found anywhere in the workspace.",
+          "order": 1
+        },
+        "carbonwire.environmentsFolder": {
+          "type": "string",
+          "default": "api-collections/environments",
+          "markdownDescription": "Where environments are kept, relative to the first workspace folder. Environments are shared by every collection.",
+          "order": 2
+        },
+        "carbonwire.responseSizeLimit": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "markdownDescription": "Response size limit in megabytes. Larger response bodies are cut short in memory; the full size is still shown.",
+          "order": 3
+        },
+        "carbonwire.historySize": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "markdownDescription": "How many recent requests to keep in history, on this device only. Set to `0` to turn history off.",
+          "order": 4
+        },
+        "carbonwire.wrapLongLines": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Wrap long lines in responses instead of scrolling sideways. Also on the response toolbar.",
+          "order": 5
+        },
+        "carbonwire.verifyTlsCertificates": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Verify TLS certificates. Turn off only for local servers with self-signed certificates.",
+          "order": 6
+        },
+        "carbonwire.proxy": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "vscode",
+            "environment",
+            "custom",
+            "direct"
+          ],
+          "enumItemLabels": [
+            "Auto",
+            "VS Code's proxy settings",
+            "Environment variables",
+            "Custom",
+            "Direct"
+          ],
+          "markdownEnumDescriptions": [
+            "Use VS Code's proxy settings when a proxy is set in `#http.proxy#` or in the `HTTP_PROXY` or `HTTPS_PROXY` environment variables. Otherwise connect directly.",
+            "Always go through VS Code's proxy support, including a proxy from your system settings. Connections aren't reused between requests, so each request is slower.",
+            "Use the proxy in the `HTTP_PROXY`, `HTTPS_PROXY` or `ALL_PROXY` environment variables, skipping hosts in `NO_PROXY`. HTTP, HTTPS and SOCKS5 proxies work, and connections are reused.",
+            "Use the proxy in `#carbonwire.proxyUrl#`, skipping the hosts in `#carbonwire.proxyBypass#`. HTTP, HTTPS and SOCKS5 proxies work, and connections are reused.",
+            "Always connect directly. Connections are reused between requests, and the timeline shows DNS, connect and TLS times."
+          ],
+          "default": "auto",
+          "markdownDescription": "How requests reach the server.",
+          "order": 7
+        },
+        "carbonwire.keepHiddenTabsLoaded": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Keep CarbonWire tabs loaded while they're hidden, so switching back to one is instant. Each open tab then uses more memory. Applies to tabs opened after the change.",
+          "order": 12
+        },
+        "carbonwire.proxyUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The proxy for **Custom**: `http://proxy:3128`, `https://proxy:443` or `socks5://user@proxy:1080`. Set the password with the **CarbonWire: Set proxy password** command; it's kept in VS Code's secret storage, never in settings.",
+          "order": 8
+        },
+        "carbonwire.proxyBypass": {
+          "type": "string",
+          "default": "localhost, 127.0.0.1, ::1",
+          "markdownDescription": "Hosts that skip the custom proxy, separated by commas: `example.com` (and its subdomains), `.internal`, `host:8443`, or `*` for all.",
+          "order": 9
+        },
+        "carbonwire.clientCertificates": {
+          "type": "array",
+          "default": [],
+          "order": 10,
+          "markdownDescription": "Client certificates for mutual TLS, by host. Paths may be relative to the first workspace folder. Set a key's passphrase with the **CarbonWire: Set client certificate passphrase** command.",
+          "items": {
+            "type": "object",
+            "required": [
+              "host"
+            ],
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "api.example.com, *.example.com, or with a port: api.example.com:8443"
+              },
+              "certificate": {
+                "type": "string",
+                "description": "PEM certificate file"
+              },
+              "key": {
+                "type": "string",
+                "description": "PEM private key file (PKCS #8, PKCS #1 or SEC1, optionally encrypted)"
+              },
+              "pfx": {
+                "type": "string",
+                "description": "PKCS #12 file (.pfx or .p12), in place of a certificate and key"
+              }
+            }
+          }
+        },
+        "carbonwire.caCertificates": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "order": 11,
+          "markdownDescription": "PEM files of certificate authorities to trust besides your system's, such as a company's internal CA. Paths may be relative to the first workspace folder."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "compile": "node esbuild.config.mjs development",
+    "build": "npm run typecheck && node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json --threshold warning",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "node esbuild.config.mjs test && vscode-test --label minimum --label stable",
+    "test:perf": "node esbuild.config.mjs perf && vscode-test --label perf",
+    "bench": "vitest run --config vitest.bench.config.mts",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.14",
+    "@eslint/js": "10.0.1",
+    "@lezer/highlight": "1.2.5",
+    "@opencollection/types": "0.14.0",
+    "@tsconfig/svelte": "5.0.8",
+    "@types/mocha": "10.0.10",
+    "@types/node": "22.20.5",
+    "@types/vscode": "1.105.0",
+    "@vscode/codicons": "0.0.46-24",
+    "@vscode/test-cli": "0.0.15",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.1.0",
+    "esbuild": "0.28.2",
+    "esbuild-svelte": "0.9.5",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
+    "pdfjs-dist": "6.4.299",
+    "svelte": "5.57.2",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "5.0.4"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "CarbonWire sends requests from collection files and can read request body files from disk, so it needs a trusted workspace."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "CarbonWire reads and writes collection files on disk."
+    }
+  },
+  "overrides": {
+    "@vscode/test-cli": {
+      "mocha": "12.0.3"
+    }
+  }
+}

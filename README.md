@@ -192,6 +192,7 @@ CarbonWire is also an Obsidian plugin, with the same features, for keeping API c
 - [ ] Pre-request and test scripts, with a collection runner
 - [ ] Code snippets for more languages
 - [ ] Move a whole Postman account in one go
+- [ ] Collections from folders outside the workspace, from several places at once, such as an Obsidian vault
 
 ## Development
 

@@ -10,7 +10,7 @@ import type { CarbonWire } from "./carbonwire";
 import type { Panels } from "./panels";
 import { promptText } from "./prompt";
 
-const FILE_TYPES = ["json", "yaml", "yml", "har", "http", "rest", "bru", "txt"];
+const FILE_TYPES = ["json", "yaml", "yml", "har", "http", "rest", "bru", "txt", "zip"];
 const FOLDER_FILES = /\.(bru|json|ya?ml|md)$/i;
 const SKIPPED_DIRS = new Set(["node_modules", ".git"]);
 /* A folder import reads every matching file into memory, so very large folders are refused. */
@@ -50,9 +50,9 @@ export class Importer {
 		const editor = vscode.window.activeTextEditor?.document;
 		type Source = vscode.QuickPickItem & { run: () => Promise<void> };
 		const sources: Source[] = [
-			{ label: "$(file) File…", detail: options.environments ? "Postman, Insomnia, Hoppscotch, HTTPie, Bruno or http-client.env.json environments" : "Postman, Insomnia, Hoppscotch or HTTPie exports, HAR, .http and .bru files, and environments", run: () => this.pickFile(options) },
+			{ label: "$(file) File…", detail: options.environments ? "Postman, Insomnia, Hoppscotch, HTTPie, Bruno or http-client.env.json environments" : "Postman, Insomnia, Hoppscotch or HTTPie exports, a whole Postman data export (.zip), HAR, .http and .bru files, and environments", run: () => this.pickFile(options) },
 		];
-		if (!options.environments) sources.push({ label: "$(folder) Folder…", detail: "A Bruno collection folder, or an OpenCollection folder, which is copied as it is", run: () => this.pickFolder() });
+		if (!options.environments) sources.push({ label: "$(folder) Folder…", detail: "A Bruno collection folder, an unzipped Postman data export, or an OpenCollection folder, which is copied as it is", run: () => this.pickFolder() });
 		sources.push({ label: "$(clippy) Clipboard", detail: options.environments ? "The contents of an environment file" : "A cURL command, or the contents of any supported file", run: () => this.fromClipboard(options) });
 		if (editor && editor.getText().trim()) {
 			sources.push({ label: `$(go-to-file) ${fsBasename(editor.fileName)}`, detail: "The file open in the editor", run: () => this.fromText(editor.getText(), fsBasename(editor.fileName), options) });
@@ -64,6 +64,7 @@ export class Importer {
 	/** Imports a file or folder chosen in the Explorer. */
 	async fromUri(uri: vscode.Uri, options: ImportOptions = {}): Promise<void> {
 		if ((await stat(uri.fsPath)).isDirectory()) return this.fromFolder(uri.fsPath);
+		if (uri.fsPath.toLowerCase().endsWith(".zip")) return this.fromZip(uri.fsPath, options);
 		await this.fromText(await readFile(uri.fsPath, "utf8"), fsBasename(uri.fsPath), options);
 	}
 
@@ -114,6 +115,13 @@ export class Importer {
 		await this.parsed(() => importText(text, fileName), fileName || "the clipboard", options);
 	}
 
+	private async fromZip(file: string, options: ImportOptions): Promise<void> {
+		const [data, { importPostmanExport, unzip }] = await Promise.all([readFile(file), import("./import-formats")]);
+		const decoder = new TextDecoder();
+		const parse = () => importPostmanExport(unzip(data, (name) => name.toLowerCase().endsWith(".json")).map((f) => ({ path: f.name, text: decoder.decode(f.data) })));
+		await this.parsed(parse, fsBasename(file), options);
+	}
+
 	/** Paths keep the chosen folder's name first, as the Bruno importer expects. */
 	private async fromFolder(dir: string): Promise<void> {
 		const files: FolderFile[] = [];
@@ -137,6 +145,11 @@ export class Importer {
 		}
 		const openCollection = files.find((f) => basename(f.path) === COLLECTION_FILE);
 		if (openCollection) return this.copyOpenCollection(files, openCollection.path);
+		// Bruno folders have .bru files; an unzipped Postman export has only JSON.
+		if (!files.some((f) => f.path.endsWith(".bru")) && files.some((f) => f.path.toLowerCase().endsWith(".json"))) {
+			const { importPostmanExport } = await import("./import-formats");
+			return this.parsed(() => importPostmanExport(files), fsBasename(dir), {});
+		}
 		const { importBrunoFolder } = await import("./import-formats");
 		await this.parsed(() => importBrunoFolder(files), fsBasename(dir), {});
 	}
@@ -185,7 +198,7 @@ export class Importer {
 		const suggested = options.collectionRoot ?? (singleRequest ? (this.panels.focusedCollection() ?? collections[0]?.root) : undefined);
 		type Item = vscode.QuickPickItem & { target: ImportTarget };
 		const items: Item[] = [
-			{ label: "$(new-folder) New collection", description: app.collectionsFolder() || "workspace folder", target: { kind: "new", dir: app.collectionsFolder() } },
+			{ label: result.collections.length > 1 ? "$(new-folder) New collections" : "$(new-folder) New collection", description: app.collectionsFolder() || "workspace folder", target: { kind: "new", dir: app.collectionsFolder() } },
 			...collections.map((c): Item => ({ label: `$(folder) Add to ${c.name}`, description: c.root || undefined, target: { kind: "existing", root: c.root } })),
 		];
 		const quickPick = vscode.window.createQuickPick<Item>();

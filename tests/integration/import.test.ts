@@ -3,7 +3,10 @@ import * as assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as vscode from "vscode";
+import { zip } from "../../src/core/export/zip";
 import { importText } from "../../src/core/import/detect";
+import { importPostmanExport } from "../../src/core/import/postman-export";
+import { unzip } from "../../src/core/import/unzip";
 import type { TestApi } from "../../src/extension";
 
 const POSTMAN = JSON.stringify({
@@ -61,6 +64,28 @@ describe("Import", () => {
 		assert.equal(api.app.secrets.get(path, "apiKey"), "s3cret");
 		const env = await api.app.store.loadEnvironment(path);
 		assert.ok(!JSON.stringify(env).includes("s3cret"), "the secret isn't written to the workspace");
+	});
+
+	it("writes a whole Postman data export: every collection, environment and the globals", async () => {
+		const encode = (text: string) => new TextEncoder().encode(text);
+		const store = JSON.stringify({ info: { name: "Store", schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" }, item: [{ name: "Ping", request: { method: "GET", url: "{{base}}/ping" } }] });
+		const globals = JSON.stringify({ name: "Workspace Globals", _postman_variable_scope: "globals", values: [{ key: "tenant", value: "acme", enabled: true }] });
+		const archive = zip([
+			{ name: "export/archive.json", data: encode("{}") },
+			{ name: "export/collection/1.json", data: encode(POSTMAN.replace('"Pets"', '"Pets export"')) },
+			{ name: "export/collection/2.json", data: encode(store) },
+			{ name: "export/environment/3.json", data: encode(POSTMAN_ENVIRONMENT.replace("Pets dev", "Export dev")) },
+			{ name: "export/globals/4.json", data: encode(globals) },
+		]);
+		const decoder = new TextDecoder();
+		const result = importPostmanExport(unzip(archive).map((f) => ({ path: f.name, text: decoder.decode(f.data) })));
+		// An earlier test wrote globals; merging is what the import asks for then.
+		const summary = await api.importer.write(result, { kind: "new", dir: api.app.collectionsFolder() }, new Map([["globals", { action: "merge", prefer: "imported" }]]));
+		assert.equal(summary.requests, 3);
+		assert.deepEqual([...summary.environments].sort(), ["Export dev", "globals"]);
+		for (const name of ["Pets export", "Store"]) assert.ok(api.app.index.collections().some((c) => c.name === name), `${name} is in the sidebar`);
+		assert.ok(api.app.store.exists(api.app.globalsPath()), "Postman's globals become CarbonWire's globals");
+		assert.ok(!api.app.environments().includes(api.app.globalsPath()));
 	});
 
 	it("copies an OpenCollection folder from the Explorer, moving its environments to the shared list", async () => {

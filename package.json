@@ -569,7 +569,7 @@
       "explorer/context": [
         {
           "command": "carbonwire.importFromExplorer",
-          "when": "explorerResourceIsFolder || resourceExtname =~ /^\\.(json|ya?ml|har|http|rest|bru)$/",
+          "when": "explorerResourceIsFolder || resourceExtname =~ /^\\.(json|ya?ml|har|http|rest|bru|zip)$/",
           "group": "7_modification@9"
         }
       ],

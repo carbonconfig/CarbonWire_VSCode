@@ -92,7 +92,7 @@ export type RequestView = {
 	shownResponse(): { status: number; bodyBytes: number; body: string } | undefined;
 	/** For tests: the tab's view and what the response pane says, and a click on an element in the page. */
 	testState(): { view: TabView; text: string } | undefined;
-	testClick(selector: string): boolean;
+	testClick(selector: string, type?: "click" | "dblclick"): boolean;
 };
 
 export type SettingsTabState =

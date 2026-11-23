@@ -60,9 +60,9 @@ const rpc = new Rpc<RequestView, RequestHost>((message) => vscode.postMessage(me
 	jsonAction: (action, path) => runJsonAction(action, path),
 	shownResponse: () => view.editor?.shownResponse(),
 	testState: () => view.editor && { view: view.editor.viewState(), text: document.querySelector(".carbonwire-response")?.textContent ?? "" },
-	testClick: (selector) => {
+	testClick: (selector, type = "click") => {
 		const target = document.querySelector<HTMLElement>(selector);
-		target?.click();
+		target?.dispatchEvent(new MouseEvent(type, { bubbles: true }));
 		return target !== null;
 	},
 });

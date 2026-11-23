@@ -111,6 +111,14 @@ describe("Request and settings tabs", () => {
 		assert.equal((await api.app.history.list()).length, before);
 	});
 
+	it("saves the split between request and response for every tab", async () => {
+		const tab = [...api.panels.requests].find((t) => t.panel.title === "Slow")!;
+		await api.app.setRequestLayout({ orientation: "vertical", ratio: 0.3 });
+		assert.ok(await tab.view.call("testClick", ".carbonwire-divider", "dblclick"));
+		await eventually(() => api.app.requestLayout().ratio === 0.5, "the reset split is saved");
+		assert.deepEqual(api.panels.problems, []);
+	});
+
 	it("keeps the tab it was showing when a hidden tab comes back", async () => {
 		const tab = [...api.panels.requests].find((t) => t.panel.title === "Slow")!;
 		assert.ok(await tab.view.call("testClick", ".carbonwire-pane-request .carbonwire-tabs button:nth-of-type(6)"));

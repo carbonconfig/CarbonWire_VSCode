@@ -26,12 +26,18 @@ describe("Request and settings tabs", () => {
 	let api: TestApi;
 	let server: Server;
 	let url: string;
+	/* Requests to /slow never get an answer; each is resolved when its connection closes. */
+	const slowClosed: Promise<void>[] = [];
 	const tabFor = (file: string): RequestTab | undefined => [...api.panels.requests].find((t) => t.file === file);
 	const shown = (tab: RequestTab) => tab.view.call("shownResponse");
 
 	before(async () => {
 		api = await vscode.extensions.getExtension<TestApi>("carbonconfig.carbonwire")!.activate();
 		server = createServer((req, res) => {
+			if (req.url === "/slow") {
+				slowClosed.push(new Promise((resolve) => res.on("close", resolve)));
+				return;
+			}
 			res.setHeader("content-type", "application/json");
 			res.end(req.url === "/small" ? SMALL : BODY);
 		});
@@ -46,6 +52,7 @@ describe("Request and settings tabs", () => {
 
 	after(async () => {
 		await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+		server.closeAllConnections();
 		server.close();
 	});
 
@@ -88,6 +95,32 @@ describe("Request and settings tabs", () => {
 		const [latest] = await api.app.history.list();
 		assert.equal(latest?.name, "Draft");
 		assert.equal(latest?.source, undefined);
+	});
+
+	it("cancels from the response pane, and keeps the cancelled send out of history", async () => {
+		api.panels.openDraft({ name: "Slow", request: { http: { method: "GET", url: url.replace("/items", "/slow") } } });
+		await eventually(() => [...api.panels.requests].some((t) => t.panel.title === "Slow" && t.loads > 0), "the request has loaded");
+		const tab = [...api.panels.requests].find((t) => t.panel.title === "Slow")!;
+		await eventually(() => tab.panel.active, "the request is focused");
+		const before = (await api.app.history.list()).length;
+		await vscode.commands.executeCommand("carbonwire.sendRequest");
+		await eventually(() => slowClosed.length === 1, "the server has the request");
+		await eventually(() => tab.view.call("testClick", ".carbonwire-response .carbonwire-cancel"), "the Cancel button is shown and clicked");
+		await slowClosed[0];
+		await eventually(async () => (await tab.view.call("testState"))?.text.includes("Cancelled after") === true, "the response pane says it was cancelled");
+		assert.equal((await api.app.history.list()).length, before);
+	});
+
+	it("keeps the tab it was showing when a hidden tab comes back", async () => {
+		const tab = [...api.panels.requests].find((t) => t.panel.title === "Slow")!;
+		assert.ok(await tab.view.call("testClick", ".carbonwire-pane-request .carbonwire-tabs button:nth-of-type(6)"));
+		await eventually(async () => (await tab.view.call("testState"))?.view.tab === "code", "the Code tab is shown");
+		api.panels.openDraft({ name: "Another" });
+		await eventually(() => !tab.panel.visible, "the tab is hidden");
+		const loads = tab.loads;
+		tab.reveal();
+		await eventually(() => tab.loads > loads, "the tab has loaded again");
+		await eventually(async () => (await tab.view.call("testState"))?.view.tab === "code", "the Code tab is shown again");
 	});
 
 	it("opens collection settings and environments without problems", async () => {

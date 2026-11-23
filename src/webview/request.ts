@@ -6,6 +6,7 @@ import { setUiHost } from "../ui/host";
 import { runJsonAction } from "../ui/json-actions";
 import type { RequestHost, RequestView, SavedTab } from "../ui/panel-protocol";
 import type { RequestController } from "../ui/request-controller";
+import type { TabView } from "../ui/request-tab";
 import RequestEditor from "../ui/RequestEditor.svelte";
 import { Rpc } from "../ui/rpc";
 import "../ui/styles.css";
@@ -29,6 +30,7 @@ interface EditorApi {
 	find(): void;
 	refreshVariables(): Promise<void>;
 	shownResponse(): { status: number; bodyBytes: number; body: string } | undefined;
+	viewState(): TabView;
 }
 
 const vscode = vscodeApi<SavedTab>();
@@ -57,6 +59,12 @@ const rpc = new Rpc<RequestView, RequestHost>((message) => vscode.postMessage(me
 	focusUrl: () => whenMounted((editor) => editor.focusUrl()),
 	jsonAction: (action, path) => runJsonAction(action, path),
 	shownResponse: () => view.editor?.shownResponse(),
+	testState: () => view.editor && { view: view.editor.viewState(), text: document.querySelector(".carbonwire-response")?.textContent ?? "" },
+	testClick: (selector) => {
+		const target = document.querySelector<HTMLElement>(selector);
+		target?.click();
+		return target !== null;
+	},
 });
 window.addEventListener("message", (e: MessageEvent) => void rpc.receive(e.data));
 reportProblems((message) => rpc.notify("problem", message));

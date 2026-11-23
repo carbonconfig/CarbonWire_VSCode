@@ -57,6 +57,7 @@
 	--code-value: var(--vscode-debugTokenExpression-number);
 	--code-keyword: var(--vscode-debugTokenExpression-boolean);
 	--code-punctuation: var(--vscode-foreground);
+	--code-comment: var(--vscode-descriptionForeground);
 
 	--color-red: var(--vscode-charts-red);
 	--color-orange: var(--vscode-charts-orange);

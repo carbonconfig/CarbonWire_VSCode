@@ -7,6 +7,7 @@ import "../ui/styles.css";
 import "./theme.css";
 import { reportMetrics, reportProblems } from "./problems";
 import { vscodeApi } from "./vscode-api";
+import { noticeIfStalled } from "./stalled";
 
 /** Functions exported by Sidebar.svelte. */
 interface SidebarApi {
@@ -37,7 +38,9 @@ rpc.notify("metric", "scriptStarted", Date.now());
 
 const loadHistory = () => void rpc.call("history").then((entries) => view.sidebar?.setHistory(entries));
 
+const stalled = noticeIfStalled();
 const initial = await rpc.call("ready");
+stalled();
 rpc.notify("metric", "stateReceived", Date.now());
 view.sidebar = mount(Sidebar, {
 	target: document.body,

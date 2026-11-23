@@ -15,6 +15,7 @@ import { loadPdfJs } from "./pdf";
 import { reportMetrics, reportProblems } from "./problems";
 import "./theme.css";
 import { vscodeApi } from "./vscode-api";
+import { noticeIfStalled } from "./stalled";
 
 /** Functions exported by RequestEditor.svelte. */
 interface EditorApi {
@@ -70,7 +71,9 @@ window.addEventListener("message", (e: MessageEvent) => void rpc.receive(e.data)
 reportProblems((message) => rpc.notify("problem", message));
 const metrics = reportMetrics((name, value) => rpc.notify("metric", name, value));
 
+const stalled = noticeIfStalled();
 const state = await rpc.call("ready");
+stalled();
 setUiHost({ copy: (text) => rpc.notify("copy", text), isMac: "isMac" in state && state.isMac, loadPdfJs });
 
 if ("message" in state) {

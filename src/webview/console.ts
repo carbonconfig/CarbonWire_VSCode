@@ -7,6 +7,7 @@ import type { ConsoleEntry } from "../ui/types";
 import { reportProblems } from "./problems";
 import "./theme.css";
 import { vscodeApi } from "./vscode-api";
+import { noticeIfStalled } from "./stalled";
 
 const vscode = vscodeApi<undefined>();
 const view: { panel?: { add(entry: ConsoleEntry): void; clear(): void } } = {};
@@ -17,7 +18,9 @@ const rpc = new Rpc<ConsoleView, ConsoleHost>((message) => vscode.postMessage(me
 window.addEventListener("message", (e: MessageEvent) => void rpc.receive(e.data));
 reportProblems((message) => rpc.notify("problem", message));
 
+const stalled = noticeIfStalled();
 const entries = await rpc.call("ready");
+stalled();
 view.panel = mount(ConsolePanel, {
 	target: document.body,
 	props: { initial: entries, onClear: () => rpc.notify("clear"), onCopy: (text: string) => rpc.notify("copy", text) },

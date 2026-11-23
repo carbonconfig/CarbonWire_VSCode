@@ -10,6 +10,7 @@ import "../ui/styles.css";
 import { reportProblems } from "./problems";
 import "./theme.css";
 import { vscodeApi } from "./vscode-api";
+import { noticeIfStalled } from "./stalled";
 
 const vscode = vscodeApi<SavedTab>();
 const view: { cookies?: { setCookies(cookies: Cookie[]): void } } = {};
@@ -19,7 +20,9 @@ const rpc = new Rpc<SettingsView, SettingsHost>((message) => vscode.postMessage(
 window.addEventListener("message", (e: MessageEvent) => void rpc.receive(e.data));
 reportProblems((message) => rpc.notify("problem", message));
 
+const stalled = noticeIfStalled();
 const state = await rpc.call("ready");
+stalled();
 const save = (doc: object) => {
 	rpc.notify("edit", doc);
 	return Promise.resolve();

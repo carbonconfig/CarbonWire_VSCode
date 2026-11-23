@@ -38,13 +38,14 @@ const view: { editor?: EditorApi; onProgress?: (progress: SendProgress) => void 
 const waiting: ((editor: EditorApi) => void)[] = [];
 const whenMounted = (run: (editor: EditorApi) => void) => (view.editor ? run(view.editor) : void waiting.push(run));
 let saved = vscode.getState();
+const lastView = saved?.view;
 
 const rpc = new Rpc<RequestView, RequestHost>((message) => vscode.postMessage(message), {
 	setEnvironment: (environment) => view.editor?.setEnvironment(environment),
 	setLayout: (layout) => view.editor?.setLayout(layout),
 	setWrap: (wrap) => view.editor?.setWrap(wrap),
 	setFile: (file, name) => {
-		saved = { file };
+		saved = { file, view: saved?.view };
 		vscode.setState(saved);
 		view.editor?.setName(name);
 	},
@@ -73,10 +74,10 @@ if ("message" in state) {
 	/** Keeps an unsaved request in the tab's state, so it survives hiding the tab and restarts. */
 	const keepDraft = (request: HttpRequest, name?: string) => {
 		if (!saved || !("draft" in saved)) return;
-		saved = { draft: { ...saved.draft, request, ...(name === undefined ? {} : { name }) } };
+		saved = { ...saved, draft: { ...saved.draft, request, ...(name === undefined ? {} : { name }) } };
 		vscode.setState(saved);
 	};
-	saved = state.file ? { file: state.file } : { draft: { name: state.name, request: state.request, dir: state.dir, historyId: state.historyId } };
+	saved = { ...(state.file ? { file: state.file } : { draft: { name: state.name, request: state.request, dir: state.dir, historyId: state.historyId } }), view: lastView };
 	vscode.setState(saved);
 
 	const controller: RequestController = {
@@ -94,7 +95,7 @@ if ("message" in state) {
 			metrics.painted("responsePainted");
 			// The tab now shows this response, not the one from history it was opened with.
 			if (saved && "draft" in saved && saved.draft.historyId !== undefined) {
-				saved = { draft: { ...saved.draft, historyId: undefined } };
+				saved = { ...saved, draft: { ...saved.draft, historyId: undefined } };
 				vscode.setState(saved);
 			}
 			return result;
@@ -117,6 +118,11 @@ if ("message" in state) {
 		removeHeaderPreset: () => rpc.call("removeHeaderPreset"),
 		saveBody: (body, contentType, name) => rpc.call("saveBody", body, contentType, name),
 		askName: (title, value) => rpc.call("askName", title, value),
+		viewChanged: (view) => {
+			if (!saved) return;
+			saved = { ...saved, view };
+			vscode.setState(saved);
+		},
 	};
 
 	view.editor = mount(RequestEditor, {
@@ -131,6 +137,7 @@ if ("message" in state) {
 			initialLayout: state.layout,
 			initialWrap: state.wrap,
 			initialSnippetLanguage: state.snippetLanguage,
+			initialView: lastView,
 			controller,
 		},
 	}) as EditorApi;

@@ -1,3 +1,4 @@
+import type { TabView } from "./request-tab";
 import type { Cookie } from "../core/cookies";
 import type { HeaderPreset } from "../core/header-presets";
 import type { Environment, Folder, HttpRequest, HttpRequestHeader, OpenCollection } from "../core/model";
@@ -16,7 +17,7 @@ export interface DraftState {
 }
 
 /** What a tab keeps in VS Code's webview state, to restore it after a restart. */
-export type SavedTab = { file: string } | { draft: DraftState };
+export type SavedTab = ({ file: string } | { draft: DraftState }) & { view?: TabView };
 
 /** Everything a request tab shows when it loads. */
 export interface RequestTabState {

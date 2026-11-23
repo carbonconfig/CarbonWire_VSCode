@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+- Import a whole Postman account in one go: the zip from Postman's data export, or its unzipped folder, brings in every collection, environment and the globals. Older single-file dumps and v1 collections work too.
+- Postman globals now become CarbonWire's globals instead of an environment.
+- Comment out lines of a JSON body with `Ctrl+/` (`Cmd+/`). Commented lines aren't sent, and a comma they leave before a closing bracket is dropped.
+- Cancel a request from the response pane, or with `Escape` there. A cancelled request says how long it ran, with a button to send it again.
+- A request opens on the first of Body, Params, Auth and Headers that has something in it.
+- Each request tab remembers its request and response tabs, the response view and the JSONPath filter, when you switch back to it and after a restart.
+
 ## 1.0.0
 
 The first release of CarbonWire for VS Code, with the same features as CarbonWire 1.1 for Obsidian.

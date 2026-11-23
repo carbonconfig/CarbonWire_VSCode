@@ -115,6 +115,15 @@ export function registerCommands(app: CarbonWire, panels: Panels, ui: UiActions,
 		onItem("carbonwire.copyRequestAsCurl", async (item) => app.copyCurl(path(item), await store.loadRequest(path(item)))),
 		onItem("carbonwire.deleteRequest", (item) => actions.deleteRequest(path(item))),
 
+		// A collection's root, or a folder, request or environment file, on disk.
+		...(
+			[
+				["carbonwire.revealInExplorer", (uri: vscode.Uri) => vscode.commands.executeCommand("revealInExplorer", uri)],
+				["carbonwire.revealInFileManager", (uri: vscode.Uri) => vscode.commands.executeCommand("revealFileInOS", uri)],
+				["carbonwire.copyPath", (uri: vscode.Uri) => vscode.env.clipboard.writeText(uri.fsPath)],
+			] as const
+		).map(([id, run]) => onItem(id, (item) => run(vscode.Uri.file(app.fsPath(item.path ?? item.root ?? ""))))),
+
 		onItem("carbonwire.activateEnvironment", (item) => app.setActiveEnvironment(stem(path(item)))),
 		onItem("carbonwire.deactivateEnvironment", () => app.setActiveEnvironment("")),
 		onItem("carbonwire.editEnvironment", (item) => panels.openSettings(path(item))),

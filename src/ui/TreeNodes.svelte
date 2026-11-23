@@ -38,6 +38,7 @@
 		<div class="tree-item" class:is-collapsed={!open}>
 			<div
 				class="tree-item-self is-clickable mod-collapsible carbonwire-row"
+				title={node.path}
 				role="treeitem"
 				aria-expanded={open}
 				aria-selected="false"
@@ -63,6 +64,7 @@
 		<div class="tree-item">
 			<div
 				class="tree-item-self is-clickable carbonwire-row"
+				title={node.path}
 				class:is-active={activePath === node.path}
 				role="treeitem"
 				aria-selected={activePath === node.path}

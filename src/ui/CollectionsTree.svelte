@@ -50,6 +50,7 @@
 		<div class="tree-item" class:is-collapsed={!open}>
 			<div
 				class="tree-item-self is-clickable mod-collapsible carbonwire-row carbonwire-collection"
+				title={collection.root || "Workspace folder"}
 				role="treeitem"
 				aria-expanded={open}
 				aria-selected="false"

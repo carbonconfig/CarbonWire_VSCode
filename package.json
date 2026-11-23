@@ -343,6 +343,21 @@
         "command": "carbonwire.exportEnvironment",
         "title": "Export…",
         "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.revealInExplorer",
+        "title": "Reveal in Explorer View",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.revealInFileManager",
+        "title": "Reveal in File Manager",
+        "category": "CarbonWire"
+      },
+      {
+        "command": "carbonwire.copyPath",
+        "title": "Copy Path",
+        "category": "CarbonWire"
       }
     ],
     "submenus": [
@@ -564,6 +579,21 @@
           "command": "carbonwire.collapseJson",
           "when": "webviewId == 'carbonwire.request' && webviewSection == 'jsonRow' && expandable",
           "group": "2_tree@2"
+        },
+        {
+          "command": "carbonwire.revealInExplorer",
+          "when": "webviewId == 'carbonwire.sidebar' && (webviewSection == 'collection' || webviewSection == 'folder' || webviewSection == 'request' || webviewSection == 'environment')",
+          "group": "8_path@1"
+        },
+        {
+          "command": "carbonwire.revealInFileManager",
+          "when": "webviewId == 'carbonwire.sidebar' && (webviewSection == 'collection' || webviewSection == 'folder' || webviewSection == 'request' || webviewSection == 'environment')",
+          "group": "8_path@2"
+        },
+        {
+          "command": "carbonwire.copyPath",
+          "when": "webviewId == 'carbonwire.sidebar' && (webviewSection == 'collection' || webviewSection == 'folder' || webviewSection == 'request' || webviewSection == 'environment')",
+          "group": "8_path@3"
         }
       ],
       "explorer/context": [
@@ -708,6 +738,18 @@
         },
         {
           "command": "carbonwire.exportEnvironment",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.revealInExplorer",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.revealInFileManager",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.copyPath",
           "when": "false"
         }
       ]

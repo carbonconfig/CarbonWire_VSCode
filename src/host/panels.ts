@@ -543,7 +543,7 @@ export class SettingsTab {
 						const value = app.secrets.get(file, variable);
 						if (value !== null) secrets[variable] = value;
 					}
-					return { kind: "environment", file, environment, secrets, globals: file === app.globalsPath() };
+					return { kind: "environment", file, environment, secrets, globals: app.isGlobals(file) };
 				} catch (e) {
 					return { message: `Couldn't read ${file}: ${e instanceof Error ? e.message : String(e)}` };
 				}

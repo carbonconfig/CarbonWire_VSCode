@@ -123,7 +123,7 @@ Commands in the Command Palette: **CarbonWire: Open collections**, **New request
 | Setting | Default | What it does |
 |---|---|---|
 | `carbonwire.collectionsFolder` | `api-collections` | Where new collections are created, relative to the workspace folder. Existing collections are found anywhere in the workspace. |
-| `carbonwire.environmentsFolder` | `api-collections/environments` | Where environments are kept. They're shared by every collection. |
+| `carbonwire.environmentsFolder` | `api-collections/environments` | Where environments are kept, in each workspace folder. They're shared by every collection. Same-named environments in several workspace folders are merged: each variable takes the first value that isn't empty. Follows the folder when you move or rename it in VS Code. |
 | `carbonwire.responseSizeLimit` | 20 | In megabytes. Larger bodies are cut short in memory; the full size is still shown. |
 | `carbonwire.historySize` | 100 | How many recent requests to keep. Set to 0 to turn history off. |
 | `carbonwire.wrapLongLines` | On | Wraps long lines in responses instead of scrolling sideways. Also on the response toolbar. |

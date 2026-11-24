@@ -20,7 +20,8 @@ export interface IndexOptions {
 	rootName(): string;
 	sortOrder(): SortOrder;
 	collectionOrder(): readonly string[];
-	environmentsFolder(): string;
+	/** One per workspace folder, the first folder's first. */
+	environmentsFolders(): readonly string[];
 	changed(collections: CollectionNode[]): void;
 	loadCache(): Record<string, MetaEntry> | undefined;
 	saveCache(cache: Record<string, MetaEntry>): PromiseLike<void>;
@@ -102,11 +103,11 @@ export class CollectionIndex {
 		return best;
 	}
 
-	/** YAML files directly inside the environments folder, by name. */
+	/** YAML files directly inside the environments folders, by folder, then by name. */
 	environments(): string[] {
 		if (!this.environmentFiles) {
-			const folder = this.options.environmentsFolder();
-			this.environmentFiles = [...this.paths].filter((p) => dirname(p) === folder).sort(compare);
+			const rank = new Map(this.options.environmentsFolders().map((folder, i) => [folder, i]));
+			this.environmentFiles = [...this.paths].filter((p) => rank.has(dirname(p))).sort((a, b) => rank.get(dirname(a))! - rank.get(dirname(b))! || compare(a, b));
 		}
 		return this.environmentFiles;
 	}
@@ -206,7 +207,7 @@ export class CollectionIndex {
 	}
 
 	private isTracked(path: string): boolean {
-		return dirname(path) === this.options.environmentsFolder() || this.collectionFor(path) !== undefined;
+		return this.options.environmentsFolders().includes(dirname(path)) || this.collectionFor(path) !== undefined;
 	}
 
 	/** Reads files without verified metadata in the background, in batches that keep the host responsive. */

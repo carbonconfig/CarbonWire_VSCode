@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import { stem } from "../core/storage/paths";
 import { Rpc, type Handlers } from "../ui/rpc";
 import type { SidebarHost, SidebarState, SidebarView } from "../ui/sidebar-protocol";
 import type { CarbonWire } from "./carbonwire";
@@ -162,9 +161,9 @@ export class EnvironmentStatus implements vscode.Disposable {
 			return;
 		}
 		const name = app.activeEnvironment();
-		const path = environments.find((p) => stem(p) === name);
+		const files = name ? app.environmentFiles(name) : [];
 		this.item.text = `$(globe) ${name || "No environment"}`;
-		this.item.tooltip = path ? `CarbonWire environment: ${name}\n${path}\n\nSelect to switch environments.` : "No CarbonWire environment is active. Select to choose one.";
+		this.item.tooltip = files.length ? `CarbonWire environment: ${name}\n${files.join("\n")}\n\nSelect to switch environments.` : "No CarbonWire environment is active. Select to choose one.";
 		this.item.show();
 	}
 }

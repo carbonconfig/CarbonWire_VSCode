@@ -786,7 +786,7 @@
         "carbonwire.environmentsFolder": {
           "type": "string",
           "default": "api-collections/environments",
-          "markdownDescription": "Where environments are kept, relative to the first workspace folder. Environments are shared by every collection.",
+          "markdownDescription": "Where environments are kept, relative to each workspace folder. Environments are shared by every collection. Environments with the same name in several workspace folders are merged: each variable takes the first value that isn't empty, the first workspace folder's first.",
           "order": 2
         },
         "carbonwire.responseSizeLimit": {
@@ -910,7 +910,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "node esbuild.config.mjs test && vscode-test --label minimum --label stable",
+    "test:integration": "node esbuild.config.mjs test && vscode-test --label minimum --label stable --label multiroot",
     "test:perf": "node esbuild.config.mjs perf && vscode-test --label perf",
     "bench": "vitest run --config vitest.bench.config.mts",
     "package": "vsce package --no-dependencies",

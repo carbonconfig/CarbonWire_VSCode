@@ -59,6 +59,18 @@ export function resolveEnvironment(env: Environment | undefined, secrets?: Secre
 	return out;
 }
 
+/** Joins same-named environments: each variable takes the first value that isn't empty. */
+export function mergeVariables(environments: readonly (readonly Variable[])[]): Variable[] {
+	const merged = new Map<string, Variable>();
+	for (const variables of environments) {
+		for (const v of variables) {
+			const prev = merged.get(v.name);
+			if (!prev || (!variableValue(prev) && variableValue(v))) merged.set(v.name, v);
+		}
+	}
+	return [...merged.values()];
+}
+
 /** Later layers override earlier ones: globals < collection < environment < folders < request < runtime. */
 export function buildScope(layers: ScopeLayers): Scope {
 	const scope = new Map<string, string>();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { environmentSecretId } from "../src/core/secrets";
-import { buildScope, interpolate, isDynamicVariable, resolveEnvironment, templateSegments, unresolvedNames, withValue } from "../src/core/variables";
+import { buildScope, interpolate, isDynamicVariable, mergeVariables, resolveEnvironment, templateSegments, unresolvedNames, withValue } from "../src/core/variables";
 
 describe("buildScope", () => {
 	it("applies precedence collection < environment < folders < request < runtime", () => {
@@ -104,5 +104,16 @@ describe("templateSegments", () => {
 		expect(templateSegments("plain")).toEqual([{ text: "plain" }]);
 		expect(isDynamicVariable("$guid")).toBe(true);
 		expect(isDynamicVariable("guid")).toBe(false);
+	});
+});
+
+describe("mergeVariables", () => {
+	it("takes each variable's first value that isn't empty, keeping the first file's order", () => {
+		const first = [{ name: "host", value: "a.test" }, { name: "token", value: "" }, { name: "only", value: "1" }];
+		const second = [{ name: "token", value: "t2" }, { name: "host", value: "b.test" }, { name: "extra", value: "x" }];
+		const third = [{ name: "token", value: "t3" }];
+		expect(mergeVariables([first, second, third])).toEqual([{ name: "host", value: "a.test" }, { name: "token", value: "t2" }, { name: "only", value: "1" }, { name: "extra", value: "x" }]);
+		expect(mergeVariables([[{ name: "empty", value: "" }], [{ name: "empty", value: "" }]])).toEqual([{ name: "empty", value: "" }]);
+		expect(mergeVariables([])).toEqual([]);
 	});
 });

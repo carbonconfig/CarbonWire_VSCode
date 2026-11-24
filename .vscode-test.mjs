@@ -56,5 +56,31 @@ function perfRun() {
 	return config;
 }
 
-// The oldest supported version (engines.vscode) and the current release; `perf` runs on its own.
-export default defineConfig([run("minimum", "1.105.0"), run("stable", "stable"), perfRun()]);
+/* Workspace folders a, b and c: environments in a and b are merged, and c starts empty to move them into. */
+function multiRootRun() {
+	const workspace = ".vscode-test/workspace-multiroot";
+	rmSync(workspace, { recursive: true, force: true });
+	const write = (path, text) => {
+		mkdirSync(join(workspace, path, ".."), { recursive: true });
+		writeFileSync(join(workspace, path), text);
+	};
+	const environment = (name, variables) => `name: ${name}\nvariables:\n${Object.entries(variables).map(([n, v]) => `  - name: ${n}\n    value: "${v}"\n`).join("")}`;
+	write("a/api-collections/Shop/opencollection.yml", "opencollection: 1.0.0\ninfo:\n  name: Shop\n");
+	write("a/api-collections/environments/dev.yml", environment("dev", { host: "a.test", token: "" }));
+	write("b/api-collections/environments/dev.yml", environment("dev", { host: "b.test", token: "t-b", extra: "x" }));
+	write("b/api-collections/environments/prod.yml", environment("prod", { host: "prod.test" }));
+	write("b/api-collections/environments/globals.yml", environment("globals", { g: "1" }));
+	mkdirSync(join(workspace, "c"), { recursive: true });
+	write("carbonwire.code-workspace", JSON.stringify({ folders: [{ path: "a" }, { path: "b" }, { path: "c" }] }));
+	return {
+		label: "multiroot",
+		version: "stable",
+		files: "dist/test/multiroot/*.test.js",
+		workspaceFolder: `${workspace}/carbonwire.code-workspace`,
+		mocha: { ui: "bdd", timeout: 20000 },
+		launchArgs: ["--disable-extensions"],
+	};
+}
+
+// The oldest supported version (engines.vscode) and the current release; `multiroot` and `perf` use their own workspaces.
+export default defineConfig([run("minimum", "1.105.0"), run("stable", "stable"), multiRootRun(), perfRun()]);

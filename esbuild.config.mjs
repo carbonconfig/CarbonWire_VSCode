@@ -110,7 +110,7 @@ if (mode === "test" || mode === "perf") {
 		await esbuild.context({
 			...common,
 			...node,
-			entryPoints: ["tests/integration/*.test.ts", "tests/perf/*.test.ts"],
+			entryPoints: ["tests/integration/*.test.ts", "tests/multiroot/*.test.ts", "tests/perf/*.test.ts"],
 			outbase: "tests",
 			outdir: "dist/test",
 			external: ["vscode"],

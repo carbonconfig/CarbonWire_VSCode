@@ -84,11 +84,11 @@ export function affectsSetting(event: vscode.ConfigurationChangeEvent, key: stri
 	return event.affectsConfiguration(`${SECTION}.${key}`);
 }
 
-/** Changes a setting where the user keeps it: in the workspace if it's set there, otherwise for the user. */
-export async function updateSetting(key: string, value: unknown): Promise<void> {
+/** Changes a setting where the user keeps it: in the workspace if it's set there, or `inWorkspace`, otherwise for the user. */
+export async function updateSetting(key: string, value: unknown, inWorkspace = false): Promise<void> {
 	const config = vscode.workspace.getConfiguration(SECTION);
 	const inspect = config.inspect(key);
-	const target = inspect?.workspaceValue !== undefined ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+	const target = inWorkspace || inspect?.workspaceValue !== undefined ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
 	await config.update(key, value, target);
 }
 

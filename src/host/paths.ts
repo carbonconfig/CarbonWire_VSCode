@@ -44,9 +44,13 @@ export class PathMap {
 
 	/** A folder setting, written relative to the first workspace folder, as a path. */
 	fromSetting(folder: string): string {
+		return this.inEveryRoot(folder)[0]!;
+	}
+
+	/** A folder setting as a path in each workspace folder, the first folder's first. */
+	inEveryRoot(folder: string): string[] {
 		const clean = folder.replace(/\\/g, "/").split("/").filter((p) => p && p !== ".").join("/");
-		if (this.roots.length <= 1) return clean;
-		const first = this.roots[0]!.name;
-		return clean ? `${first}/${clean}` : first;
+		if (this.roots.length <= 1) return [clean];
+		return this.roots.map((r) => (clean ? `${r.name}/${clean}` : r.name));
 	}
 }

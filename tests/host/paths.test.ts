@@ -23,6 +23,8 @@ describe("PathMap", () => {
 		expect(map.toFsPath("other/x.yml")).toBeUndefined();
 		expect(map.fromSetting("api-collections")).toBe("app/api-collections");
 		expect(map.fromSetting("")).toBe("app");
+		expect(map.inEveryRoot("./api-collections/environments")).toEqual(["app/api-collections/environments", "api/api-collections/environments"]);
+		expect(new PathMap([app]).inEveryRoot("api-collections/environments")).toEqual(["api-collections/environments"]);
 	});
 
 	it("ignores files outside the workspace, including look-alike folder names", () => {

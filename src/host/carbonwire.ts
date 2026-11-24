@@ -2,15 +2,15 @@ import { readFile, stat } from "node:fs/promises";
 import { isAbsolute } from "node:path";
 import * as vscode from "vscode";
 import type { OAuth2Tokens } from "../core/auth/oauth2";
-import type { HttpRequest } from "../core/model";
+import type { HttpRequest, Variable } from "../core/model";
 import { buildRequest } from "../core/request-builder";
 import type { SendResult } from "../core/sender";
 import { insertKey, type SortOrder } from "../core/storage/order";
-import { basename, dirname, joinPath, stem } from "../core/storage/paths";
+import { basename, dirname, joinPath, movedPath, stem } from "../core/storage/paths";
 import { CollectionStore } from "../core/storage/store";
 import { compare, isYaml, type CollectionNode } from "../core/storage/tree";
 import { TransportError, type SendProgress, type Transport } from "../core/transport/types";
-import { resolveEnvironment } from "../core/variables";
+import { mergeVariables, resolveEnvironment } from "../core/variables";
 import type { ConsoleEntry, EnvironmentEntry, RequestLayout } from "../ui/types";
 import { CollectionIndex } from "./collection-index";
 import { debounce } from "./debounce";
@@ -105,7 +105,7 @@ export class CarbonWire implements vscode.Disposable {
 				rootName: () => this.paths.rootName(),
 				sortOrder: () => this.state.sortOrder,
 				collectionOrder: () => this.state.collectionOrder,
-				environmentsFolder: () => this.environmentsFolder(),
+				environmentsFolders: () => this.environmentsFolders(),
 				changed: (collections) => this.collectionsChanged.fire(collections),
 				loadCache: () => this.state.metaCache,
 				saveCache: (cache) => this.state.setMetaCache(cache),
@@ -156,8 +156,15 @@ export class CarbonWire implements vscode.Disposable {
 		return this.paths.fromSetting(this.settings.collectionsFolder);
 	}
 
+	/** The environments folder in each workspace folder; same-named environments in them are merged. */
+	environmentsFolders(): string[] {
+		return this.paths.inEveryRoot(this.settings.environmentsFolder);
+	}
+
+	/** Where new environments go: the first environments folder that has any, else the first workspace folder's. */
 	environmentsFolder(): string {
-		return this.paths.fromSetting(this.settings.environmentsFolder);
+		const first = this.index.environments()[0];
+		return first ? dirname(first) : this.environmentsFolders()[0]!;
 	}
 
 	sortOrder(): SortOrder {
@@ -186,15 +193,26 @@ export class CarbonWire implements vscode.Disposable {
 		this.index.rebuild();
 	}
 
+	/** The globals file Edit globals opens: the first one that exists, else one beside the environments. */
 	globalsPath(): string {
-		return joinPath(this.environmentsFolder(), GLOBALS_FILE);
+		return this.globalsFiles()[0] ?? joinPath(this.environmentsFolder(), GLOBALS_FILE);
 	}
 
-	/** Environment files, shared by every collection, in the order they were dragged to. */
+	isGlobals(path: string): boolean {
+		return basename(path) === GLOBALS_FILE && this.environmentsFolders().includes(dirname(path));
+	}
+
+	/** One file per environment name, shared by every collection, in the order they were dragged to. */
 	environments(): string[] {
 		const rank = new Map(this.state.environmentOrder.map((name, i) => [name, i]));
-		const globals = this.globalsPath();
-		return [...this.index.environments()].filter((p) => p !== globals).sort((a, b) => (rank.get(stem(a)) ?? Infinity) - (rank.get(stem(b)) ?? Infinity) || compare(stem(a), stem(b)));
+		const first = new Map<string, string>();
+		for (const path of this.environmentFiles()) if (!first.has(stem(path))) first.set(stem(path), path);
+		return [...first.values()].sort((a, b) => (rank.get(stem(a)) ?? Infinity) - (rank.get(stem(b)) ?? Infinity) || compare(stem(a), stem(b)));
+	}
+
+	/** Every file of the environment, one per workspace folder that has it, the first folder's first. */
+	environmentFiles(name?: string): string[] {
+		return this.index.environments().filter((p) => basename(p) !== GLOBALS_FILE && (name === undefined || stem(p) === name));
 	}
 
 	/** Environments with the colour from their file, once the background scan has read it. */
@@ -356,6 +374,7 @@ export class CarbonWire implements vscode.Disposable {
 	/** Follows a rename or move made in CarbonWire or elsewhere in VS Code. Both report it, so it's safe to call twice. */
 	fileRenamed(from: string, to: string): void {
 		const fromRoot = this.index.collectionFor(from)?.root;
+		const movesEnvironments = this.index.environments().some((p) => movedPath(p, from, to) !== undefined);
 		this.store.invalidateUnder(from);
 		this.store.invalidateUnder(to);
 		this.index.renamed(from, to);
@@ -363,6 +382,7 @@ export class CarbonWire implements vscode.Disposable {
 		if (fromRoot !== undefined && toRoot !== undefined) void this.store.followSidecar({ root: fromRoot, path: from }, { root: toRoot, path: to }).catch(() => undefined);
 		void this.history.moveSource(from, to).catch(() => undefined);
 		this.followEnvironmentRename(from, to);
+		if (movesEnvironments) this.followEnvironmentsFolder(from, to);
 		this.fileRenamedEmitter.fire({ from, to });
 	}
 
@@ -383,18 +403,24 @@ export class CarbonWire implements vscode.Disposable {
 		const root = collection?.root ?? "";
 		const context = collection && path ? await this.store.loadContext(root, path) : { collectionRoot: "", collection: {}, chain: [] };
 		const name = this.activeEnvironment();
-		const environmentPath = name ? this.environments().find((p) => stem(p) === name) : undefined;
-		const environment = environmentPath ? await this.store.loadEnvironment(environmentPath) : undefined;
-		if (environment && environmentPath) await this.secrets.load(environmentPath, secretNames(environment));
-		const variables = resolveEnvironment(environment, (variable) => (environmentPath ? this.secrets.get(environmentPath, variable) : null));
-		const globalsPath = this.globalsPath();
-		let globals: ReturnType<typeof resolveEnvironment> | undefined;
-		if (this.store.exists(globalsPath)) {
-			const doc = await this.store.loadEnvironment(globalsPath);
-			await this.secrets.load(globalsPath, secretNames(doc));
-			globals = resolveEnvironment(doc, (variable) => this.secrets.get(globalsPath, variable));
-		}
+		const [variables, globals] = await Promise.all([this.loadVariables(name ? this.environmentFiles(name) : []), this.loadVariables(this.globalsFiles())]);
 		return { root, context, scope: requestScope(context, request, variables, globals) };
+	}
+
+	private globalsFiles(): string[] {
+		return this.environmentsFolders().map((folder) => joinPath(folder, GLOBALS_FILE)).filter((path) => this.store.exists(path));
+	}
+
+	/** Same-named environment files, secrets included, merged into one. */
+	private async loadVariables(paths: readonly string[]): Promise<Variable[]> {
+		const resolved = await Promise.all(
+			paths.map(async (path) => {
+				const environment = await this.store.loadEnvironment(path);
+				await this.secrets.load(path, secretNames(environment));
+				return resolveEnvironment(environment, (variable) => this.secrets.get(path, variable));
+			}),
+		);
+		return mergeVariables(resolved);
 	}
 
 	/** Relative body files are inside the collection; absolute ones are read from anywhere on disk. */
@@ -517,7 +543,7 @@ export class CarbonWire implements vscode.Disposable {
 
 	/** Keeps an environment selected, and in its place, when its file is renamed in place. */
 	private followEnvironmentRename(from: string, to: string): void {
-		if (!isYaml(from) || dirname(from) !== this.environmentsFolder() || dirname(to) !== dirname(from)) return;
+		if (!isYaml(from) || !this.environmentsFolders().includes(dirname(from)) || dirname(to) !== dirname(from)) return;
 		const order = [...this.state.environmentOrder];
 		const i = order.indexOf(stem(from));
 		if (i >= 0) {
@@ -525,5 +551,19 @@ export class CarbonWire implements vscode.Disposable {
 			void this.state.setEnvironmentOrder(order);
 		}
 		if (this.state.activeEnvironment === stem(from)) void this.setActiveEnvironment(stem(to));
+	}
+
+	/** Keeps the environments folder setting on the folder when it, or a folder above it, moves within its workspace folder. */
+	private followEnvironmentsFolder(from: string, to: string): void {
+		const folders = this.environmentsFolders();
+		const i = folders.findIndex((folder) => movedPath(folder, from, to) !== undefined);
+		if (i < 0) return;
+		const moved = movedPath(folders[i]!, from, to)!;
+		const prefix = this.paths.roots.length > 1 ? `${this.paths.roots[i]!.name}/` : "";
+		// Moved to another workspace folder: the merge finds it there without a change.
+		if (!moved.startsWith(prefix)) return;
+		// The setting applies to every workspace folder, so it stays while another one still has environments there.
+		if (this.index.environments().length > 0) return;
+		void updateSetting("environmentsFolder", moved.slice(prefix.length), true);
 	}
 }

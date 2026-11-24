@@ -10,7 +10,7 @@ interface Disk {
 }
 
 /** A workspace in memory, counting reads so caching can be checked. */
-function setup(initial: Record<string, string>, options: { cache?: Record<string, MetaEntry>; sortOrder?: SortOrder } = {}) {
+function setup(initial: Record<string, string>, options: { cache?: Record<string, MetaEntry>; sortOrder?: SortOrder; environmentsFolders?: string[] } = {}) {
 	const disk = new Map<string, Disk>(Object.entries(initial).map(([path, text], i) => [path, { text, mtime: 1000 + i, ctime: 500 + i }]));
 	const reads: string[] = [];
 	const changes: CollectionNode[][] = [];
@@ -31,7 +31,7 @@ function setup(initial: Record<string, string>, options: { cache?: Record<string
 			rootName: () => "app",
 			sortOrder: () => options.sortOrder ?? "manual",
 			collectionOrder: () => [],
-			environmentsFolder: () => "api-collections/environments",
+			environmentsFolders: () => options.environmentsFolders ?? ["api-collections/environments"],
 			changed: (collections) => changes.push(collections),
 			loadCache: () => options.cache,
 			saveCache: async (cache) => {
@@ -73,6 +73,22 @@ describe("CollectionIndex", () => {
 		expect(index.metaFor("api-collections/environments/dev.yml")?.color).toBe("#27AE60");
 		expect(index.collectionFor("api-collections/Shop/Products/list.yml")?.root).toBe("api-collections/Shop");
 		expect(index.collectionFor("deploy/chart.yaml")).toBeUndefined();
+	});
+
+	it("lists the environments of every workspace folder, the first folder's first", async () => {
+		const { index, settle } = setup(
+			{
+				"b/api-collections/environments/dev.yml": "name: dev\ncolor: '#27AE60'\n",
+				"b/api-collections/environments/alpha.yml": "name: alpha\n",
+				"a/api-collections/environments/prod.yml": "name: prod\n",
+				"a/api-collections/other.yml": "name: other\n",
+			},
+			{ environmentsFolders: ["a/api-collections/environments", "b/api-collections/environments"] },
+		);
+		await index.ready();
+		expect(index.environments()).toEqual(["a/api-collections/environments/prod.yml", "b/api-collections/environments/alpha.yml", "b/api-collections/environments/dev.yml"]);
+		await settle();
+		expect(index.metaFor("b/api-collections/environments/dev.yml")?.color).toBe("#27AE60");
 	});
 
 	it("reuses cached metadata for files that haven't changed, and reads the rest", async () => {

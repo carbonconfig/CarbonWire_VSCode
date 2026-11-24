@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0
+
+- Hover an item in the sidebar to see where it's saved. Its menu copies the full path or shows the file in the Explorer view or your file manager.
+- The active environment shows beside the request name, above Send, and Send takes the environment's colour.
+- Environments are read from every workspace folder, so moving `api-collections` to another folder of the workspace no longer hides them. Same-named environments in several folders are merged: each variable takes the first value that isn't empty.
+- The environments folder setting follows the folder when you move or rename it in VS Code.
+- The split between request and response stays where you dragged it, when you switch tabs and after a restart.
+- A tab left blank after CarbonWire is updated or restarted now says so, and how to get it back.
+
 ## 1.1.0
 
 - Import a whole Postman account in one go: the zip from Postman's data export, or its unzipped folder, brings in every collection, environment and the globals. Older single-file dumps and v1 collections work too.

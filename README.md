@@ -50,7 +50,7 @@ CarbonWire is free and open source, under the MIT license. Also [available for O
 - Collections and folders share variables, headers, auth and settings with every request inside them, and can have docs, written in Markdown
 - Globals: variables for every collection, whichever environment is active
 - Hover an item in the sidebar to see where it's saved. Its menu copies the path or shows it in the Explorer view or your file manager.
-- One list of environments, one active at a time, each with its own colour, shown in the status bar. Names like dev, test, staging and prod get matching colours automatically.
+- One list of environments, one active at a time, each with its own colour, shown in the status bar, beside the request name and on the Send button. Names like dev, test, staging and prod get matching colours automatically.
 - Drag to reorder or move requests, folders, collections and environments. Sort by name, creation or last update.
 - Right-click anything in the sidebar for its actions, or use the keyboard: arrow keys move through the tree, `Shift+F10` opens the menu.
 

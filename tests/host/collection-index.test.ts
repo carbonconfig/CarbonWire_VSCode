@@ -33,7 +33,7 @@ function setup(initial: Record<string, string>, options: { cache?: Record<string
 			collectionOrder: () => [],
 			environmentsFolders: () => options.environmentsFolders ?? ["api-collections/environments"],
 			changed: (collections) => changes.push(collections),
-			loadCache: () => options.cache,
+			loadCache: async () => options.cache,
 			saveCache: async (cache) => {
 				saved = cache;
 			},

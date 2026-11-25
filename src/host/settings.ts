@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import type { SortOrder } from "../core/storage/order";
 import type { RequestLayout } from "../ui/types";
-import type { MetaEntry } from "./collection-index";
 import type { CertificateSetting } from "./network";
 
 const SECTION = "carbonwire";
@@ -145,13 +144,5 @@ export class State {
 
 	setRequestLayout(layout: RequestLayout): Thenable<void> {
 		return this.context.globalState.update("requestLayout", layout);
-	}
-
-	get metaCache(): Record<string, MetaEntry> | undefined {
-		return this.context.workspaceState.get("metaCache");
-	}
-
-	setMetaCache(cache: Record<string, MetaEntry>): Thenable<void> {
-		return this.context.workspaceState.update("metaCache", cache);
 	}
 }

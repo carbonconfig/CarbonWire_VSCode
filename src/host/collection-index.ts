@@ -23,7 +23,7 @@ export interface IndexOptions {
 	/** One per workspace folder, the first folder's first. */
 	environmentsFolders(): readonly string[];
 	changed(collections: CollectionNode[]): void;
-	loadCache(): Record<string, MetaEntry> | undefined;
+	loadCache(): PromiseLike<Record<string, MetaEntry> | undefined>;
 	saveCache(cache: Record<string, MetaEntry>): PromiseLike<void>;
 }
 
@@ -55,7 +55,7 @@ export class CollectionIndex {
 	/** Lists the workspace's YAML files on first use; later changes come in through the file events below. */
 	ready(): Promise<void> {
 		this.scanning ??= (async () => {
-			const cached = this.options.loadCache();
+			const cached = await this.options.loadCache();
 			for (const [path, entry] of Object.entries(cached ?? {})) {
 				if (!Array.isArray(entry) || entry.length !== 4) continue;
 				this.meta.set(path, entry);

@@ -16,6 +16,7 @@ import { CollectionIndex } from "./collection-index";
 import { debounce } from "./debounce";
 import { HistoryStore, type HistoryEntry } from "./history";
 import { ItemActions } from "./item-actions";
+import { MetaCacheFile } from "./meta-cache";
 import { PathMap, type WorkspaceRoot } from "./paths";
 import { secretNames, Secrets } from "./secrets";
 import { affectsSetting, readSettings, State, updateSetting, usesVSCodeProxy, type Settings } from "./settings";
@@ -99,6 +100,8 @@ export class CarbonWire implements vscode.Disposable {
 		this.state = new State(context);
 		this.files = new DiskFiles(() => this.paths);
 		this.store = new CollectionStore(this.files, (path) => this.index.collectionFor(path)?.root);
+		const storage = context.storageUri ?? context.globalStorageUri;
+		const metaCache = new MetaCacheFile(vscode.Uri.joinPath(storage, "meta-cache.json").fsPath, context.workspaceState);
 		this.index = new CollectionIndex(
 			{ listYaml: (dir) => this.listYaml(dir), stat: (path) => this.files.stat(path), read: (path) => this.files.read(path) },
 			{
@@ -107,11 +110,10 @@ export class CarbonWire implements vscode.Disposable {
 				collectionOrder: () => this.state.collectionOrder,
 				environmentsFolders: () => this.environmentsFolders(),
 				changed: (collections) => this.collectionsChanged.fire(collections),
-				loadCache: () => this.state.metaCache,
-				saveCache: (cache) => this.state.setMetaCache(cache),
+				loadCache: () => metaCache.load(),
+				saveCache: (cache) => metaCache.save(cache),
 			},
 		);
-		const storage = context.storageUri ?? context.globalStorageUri;
 		this.history = new HistoryStore(vscode.Uri.joinPath(storage, "history").fsPath, () => this.settings.historySize, () => this.historyChanged.fire());
 		this.secrets = new Secrets(context.secrets);
 		this.network = new Network(context.secrets, () => this.settings, (path) => this.files.fsPath(this.paths.fromSetting(path)), cookieFile(storage), (message) => void vscode.window.showWarningMessage(message));

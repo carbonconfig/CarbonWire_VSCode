@@ -51,6 +51,8 @@
 	--cw-tip-background: var(--vscode-editorHoverWidget-background, var(--background-secondary));
 	--cw-tip-foreground: var(--vscode-editorHoverWidget-foreground, var(--text-normal));
 	--cw-tip-border: var(--vscode-editorHoverWidget-border, var(--background-modifier-border));
+	--cw-suggest-active: var(--vscode-editorSuggestWidget-selectedBackground, var(--vscode-list-activeSelectionBackground));
+	--cw-suggest-active-text: var(--vscode-editorSuggestWidget-selectedForeground, var(--vscode-list-activeSelectionForeground, inherit));
 	--nav-indentation-guide-color: var(--vscode-tree-indentGuidesStroke);
 	--nav-indentation-guide-width: 1px;
 

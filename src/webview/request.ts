@@ -1,3 +1,4 @@
+import { EditorView } from "@codemirror/view";
 import { mount } from "svelte";
 import type { HttpRequest } from "../core/model";
 import type { SendResult } from "../core/sender";
@@ -66,7 +67,32 @@ const rpc = new Rpc<RequestView, RequestHost>((message) => vscode.postMessage(me
 		target?.dispatchEvent(new MouseEvent(type, { bubbles: true }));
 		return target !== null;
 	},
-	testText: (selector) => document.querySelector(selector)?.textContent ?? undefined,
+	testText: (selector) => {
+		const el = document.querySelector(selector);
+		return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : (el?.textContent ?? undefined);
+	},
+	testType: async (selector, text) => {
+		const el = document.querySelector<HTMLElement>(selector);
+		if (!el) return undefined;
+		const editor = el.classList.contains("cm-content") ? EditorView.findFromDOM(el) : null;
+		if (editor) {
+			editor.focus();
+			const end = editor.state.doc.length;
+			editor.dispatch({ changes: { from: end, insert: text }, selection: { anchor: end + text.length }, userEvent: "input.type" });
+		} else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+			el.focus();
+			el.value += text;
+			el.setSelectionRange(el.value.length, el.value.length);
+			el.dispatchEvent(new InputEvent("input", { bubbles: true }));
+		}
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		return [...document.querySelectorAll(".carbonwire-suggest-label")].map((l) => l.textContent ?? "");
+	},
+	testKey: (selector, key) => {
+		const el = document.querySelector<HTMLElement>(selector);
+		el?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+		return el !== null;
+	},
 	testHover: async (selector, click) => {
 		const target = document.querySelector<HTMLElement>(selector);
 		if (!target) return undefined;

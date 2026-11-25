@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Typing `{{` suggests the variables in scope, with their values; `{{$` suggests the dynamic values. Header names and their usual values are suggested as you type them.
+- **CarbonWire: Go to request** finds any request by name, collection or folder. It's also in the CarbonWire sidebar's menu; assign it a keyboard shortcut if you like.
+- Bulk edit params, headers and form fields as `name: value` lines.
 - JSON bodies are checked as you type. A mistake, such as a missing comma or an unclosed bracket, is underlined where it is and described below the editor; select the description to go to it. Comments and unquoted `{{variables}}` are accepted, as they're handled before sending.
 - Format JSON now works on bodies with comments and unquoted `{{variables}}`, keeping them where they are. With a mistake in the body, it goes to the mistake instead.
 - Hover a `{{variable}}` to see its value and where it's set: the environment, globals, the collection, a folder or the request. Secret values stay masked. `Ctrl+Click` (`Cmd+Click`) opens it there to edit, or adds one that isn't set to the active environment.

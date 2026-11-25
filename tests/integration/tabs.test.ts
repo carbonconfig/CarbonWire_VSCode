@@ -7,6 +7,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import type { TestApi } from "../../src/extension";
 import type { RequestTab } from "../../src/host/panels";
+import { listRequests } from "../../src/core/storage/tree";
 
 const ROOT = "api-collections/Tabs";
 const ECHO = `${ROOT}/echo.yml`;
@@ -141,6 +142,56 @@ describe("Request and settings tabs", () => {
 		assert.deepEqual(api.panels.problems, []);
 		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
 		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+	});
+
+	it("suggests variables after {{ and header names and values, and edits headers in bulk", async () => {
+		const root = join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, ROOT);
+		const file = `${ROOT}/suggest.yml`;
+		await writeFile(join(root, "suggest.yml"), `info:\n  name: suggest\nhttp:\n  method: POST\n  url: http://example.test/\n  headers:\n    - name: Accept\n      value: "*/*"\n  body:\n    type: json\n    data: '{"a": '\n`);
+		await eventually(() => api.app.collectionFor(file) !== undefined, "the request is indexed");
+		api.panels.openRequest(file);
+		await eventually(() => (tabFor(file)?.loads ?? 0) > 0, "the tab has loaded");
+		const tab = tabFor(file)!;
+		const saved = () => api.app.store.loadRequest(file);
+
+		const url = ".carbonwire-url-field textarea";
+		await tab.view.call("testType", url, "{{tabsB");
+		await eventually(async () => (await tab.view.call("testType", url, ""))?.includes("tabsBase") === true, "the URL suggests the variable");
+		await tab.view.call("testKey", url, "Enter");
+		await eventually(async () => (await saved()).http?.url === "http://example.test/{{tabsBase}}", "Enter puts the variable in the URL");
+		assert.equal(await shown(tab), undefined, "Enter picked the suggestion instead of sending");
+
+		await tab.view.call("testType", ".cm-content", "{{tabsB");
+		await eventually(async () => (await tab.view.call("testType", ".cm-content", ""))?.includes("tabsBase") === true, "the body suggests the variable");
+		await tab.view.call("testKey", ".cm-content", "Tab");
+		await eventually(async () => JSON.stringify((await saved()).http?.body).includes('{\\"a\\": {{tabsBase}}'), "Tab puts the variable in the body");
+
+		assert.ok(await tab.view.call("testClick", ".carbonwire-pane-request .carbonwire-tabs button:nth-of-type(2)"));
+		await eventually(async () => (await tab.view.call("testClick", ".carbonwire-kv-add")) === true, "the Headers tab is shown");
+		const row = ".carbonwire-kv > .carbonwire-kv-row:nth-child(2)";
+		assert.deepEqual(await tab.view.call("testType", `${row} .carbonwire-kv-name input`, "cont"), ["Content-Type", "Cache-Control"]);
+		await tab.view.call("testKey", `${row} .carbonwire-kv-name input`, "Enter");
+		assert.ok((await tab.view.call("testType", `${row} .carbonwire-kv-value input`, ""))?.includes("application/json"), "an empty value lists the header's usual values");
+		await tab.view.call("testKey", `${row} .carbonwire-kv-value input`, "Enter");
+
+		assert.ok(await tab.view.call("testClick", ".carbonwire-kv-bulk-toggle"));
+		assert.equal(await tab.view.call("testText", ".carbonwire-kv-bulk"), "Accept: */*\nContent-Type: application/json");
+		await tab.view.call("testType", ".carbonwire-kv-bulk", "\n// X-Off: 1");
+		await eventually(
+			async () => JSON.stringify((await saved()).http?.headers) === JSON.stringify([{ name: "Accept", value: "*/*" }, { name: "Content-Type", value: "application/json" }, { name: "X-Off", value: "1", disabled: true }]),
+			"the bulk text is saved as rows",
+		);
+		assert.deepEqual(api.panels.problems, []);
+		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+	});
+
+	it("goes to a request picked by name", async () => {
+		const [first] = listRequests(await api.app.collections());
+		assert.ok(first);
+		void vscode.commands.executeCommand("carbonwire.goToRequest");
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		await vscode.commands.executeCommand("workbench.action.acceptSelectedQuickOpenItem");
+		await eventually(() => tabFor(first.path)?.panel.active === true, "the first request opens");
 	});
 
 	it("sends an unsaved request and keeps it in history", async () => {

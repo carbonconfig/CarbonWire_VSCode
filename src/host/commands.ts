@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { joinPath, stem } from "../core/storage/paths";
-import { COLLECTION_FILE } from "../core/storage/tree";
+import { COLLECTION_FILE, listRequests } from "../core/storage/tree";
 import type { CarbonWire } from "./carbonwire";
 import { SIDEBAR_VIEW, type SidebarProvider } from "./sidebar";
 import type { Importer } from "./importer";
@@ -57,6 +57,19 @@ export function registerCommands(app: CarbonWire, panels: Panels, ui: UiActions,
 		command("carbonwire.collapseAll", () => sidebar.collapseAll()),
 		command("carbonwire.clearHistory", () => ui.clearHistory()),
 		command("carbonwire.newRequest", () => ui.newRequest()),
+		command("carbonwire.goToRequest", async () => {
+			const requests = listRequests(await app.collections());
+			if (requests.length === 0) {
+				void vscode.window.showInformationMessage("There are no requests yet. Create one with CarbonWire: New request.");
+				return;
+			}
+			const items = requests.map((r) => {
+				const method = app.index.metaFor(r.path)?.method?.toUpperCase() ?? "GET";
+				return { label: r.name, description: `${method}  ${[r.collection, ...r.folders].join(" / ")}`, path: r.path };
+			});
+			const picked = await vscode.window.showQuickPick(items, { title: "Go to request", placeHolder: "Search requests in every collection by name, collection or folder", matchOnDescription: true });
+			if (picked) panels.openRequest(picked.path);
+		}),
 		command("carbonwire.sendRequest", () => panels.activeRequest()?.send()),
 		command("carbonwire.saveRequest", () => panels.activeRequest()?.save()),
 		command("carbonwire.findInRequest", () => panels.activeRequest()?.find()),

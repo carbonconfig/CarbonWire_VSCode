@@ -103,6 +103,10 @@ export type RequestView = {
 	testHover(selector: string, click?: boolean): string | undefined;
 	/** For tests: the text of the first element matching `selector`, or undefined if there's none. */
 	testText(selector: string): string | undefined;
+	/** For tests: types `text` at the end of a field or the body editor, then returns the suggestions shown. */
+	testType(selector: string, text: string): string[] | undefined;
+	/** For tests: presses a key in a field or the body editor. */
+	testKey(selector: string, key: string): boolean;
 };
 
 export type SettingsTabState =

@@ -106,6 +106,12 @@
         "category": "CarbonWire"
       },
       {
+        "command": "carbonwire.goToRequest",
+        "title": "Go to request",
+        "category": "CarbonWire",
+        "icon": "$(search)"
+      },
+      {
         "command": "carbonwire.sendRequest",
         "title": "Send request",
         "category": "CarbonWire",
@@ -393,6 +399,11 @@
           "command": "carbonwire.collapseAll",
           "when": "view == carbonwire.sidebar",
           "group": "navigation@4"
+        },
+        {
+          "command": "carbonwire.goToRequest",
+          "when": "view == carbonwire.sidebar",
+          "group": "0_find@1"
         },
         {
           "command": "carbonwire.clearHistory",

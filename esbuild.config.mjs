@@ -39,7 +39,7 @@ const lazyFiles = {
 
 /* Modules imported with import() that live in dist/send.js (src/host/send-bundle.ts). */
 const SEND_MODULES = [
-	...["sender", "transport/node", "auth/oauth2", "export/curl", "export/snippet", "export/collection", "export/zip", "cookies", "header-presets"].map((m) => `src/core/${m}.ts`),
+	...["sender", "transport/node", "auth/oauth2", "export/curl", "export/snippet", "export/collection", "export/zip", "cookies", "header-presets", "after-response"].map((m) => `src/core/${m}.ts`),
 	"src/host/exporter.ts",
 ].map((m) => resolvePath(m));
 const sendFile = {

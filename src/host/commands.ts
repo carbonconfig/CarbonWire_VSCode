@@ -78,6 +78,7 @@ export function registerCommands(app: CarbonWire, panels: Panels, ui: UiActions,
 			if (text !== undefined) await vscode.env.clipboard.writeText(text);
 		}),
 		onItem("carbonwire.copyJsonPath", (item) => item.path !== undefined && vscode.env.clipboard.writeText(item.path)),
+		onItem("carbonwire.saveJsonAsVariable", (item) => item.path !== undefined && panels.activeRequest()?.saveAsVariable(item.path)),
 		onItem("carbonwire.expandJson", (item) => item.path !== undefined && panels.activeRequest()?.jsonAction("expandAll", item.path)),
 		onItem("carbonwire.collapseJson", (item) => item.path !== undefined && panels.activeRequest()?.jsonAction("collapseAll", item.path)),
 		command("carbonwire.openSettings", () => vscode.commands.executeCommand("workbench.action.openSettings", "@ext:carbonconfig.carbonwire")),

@@ -33,6 +33,7 @@ interface EditorApi {
 	refreshVariables(): Promise<void>;
 	shownResponse(): { status: number; bodyBytes: number; body: string } | undefined;
 	viewState(): TabView;
+	addVariableAction(variable: string, path: string): void;
 }
 
 const vscode = vscodeApi<SavedTab>();
@@ -60,6 +61,7 @@ const rpc = new Rpc<RequestView, RequestHost>((message) => vscode.postMessage(me
 	find: () => whenMounted((editor) => editor.find()),
 	focusUrl: () => whenMounted((editor) => editor.focusUrl()),
 	jsonAction: (action, path) => runJsonAction(action, path),
+	addVariableAction: (variable, path) => view.editor?.addVariableAction(variable, path),
 	shownResponse: () => view.editor?.shownResponse(),
 	testState: () => view.editor && { view: view.editor.viewState(), text: document.querySelector(".carbonwire-response")?.textContent ?? "" },
 	testClick: (selector, type = "click") => {

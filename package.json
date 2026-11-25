@@ -138,6 +138,11 @@
         "category": "CarbonWire"
       },
       {
+        "command": "carbonwire.saveJsonAsVariable",
+        "title": "Save as variable…",
+        "category": "CarbonWire"
+      },
+      {
         "command": "carbonwire.expandJson",
         "title": "Expand all",
         "category": "CarbonWire"
@@ -582,6 +587,11 @@
           "group": "1_copy@2"
         },
         {
+          "command": "carbonwire.saveJsonAsVariable",
+          "when": "webviewId == 'carbonwire.request' && webviewSection == 'jsonRow'",
+          "group": "2_variable@1"
+        },
+        {
           "command": "carbonwire.expandJson",
           "when": "webviewId == 'carbonwire.request' && webviewSection == 'jsonRow' && expandable",
           "group": "2_tree@1"
@@ -721,6 +731,10 @@
         },
         {
           "command": "carbonwire.copyJsonPath",
+          "when": "false"
+        },
+        {
+          "command": "carbonwire.saveJsonAsVariable",
           "when": "false"
         },
         {

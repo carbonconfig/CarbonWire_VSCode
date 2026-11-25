@@ -92,6 +92,8 @@ export type RequestView = {
 	save(): void;
 	find(): void;
 	focusUrl(): void;
+	/** Takes a variable from `path` after each send, from the JSON tree's menu. */
+	addVariableAction(variable: string, path: string): void;
 	/** For a JSON tree row's context menu; "copyValue" returns the text. */
 	jsonAction(action: JsonAction, path: string): string | undefined;
 	/** What the response panel shows; for tests. */

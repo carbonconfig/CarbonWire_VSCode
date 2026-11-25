@@ -82,6 +82,15 @@ export class Panels implements vscode.Disposable {
 			const environment = app.activeEnvironmentEntry();
 			for (const tab of this.requests) tab.view.notify("setEnvironment", environment);
 		};
+		// A response writing a variable into a file open in a settings tab: the tab's edits go first, then it shows the new value.
+		app.writeHooks = {
+			before: async (path) => {
+				for (const tab of this.settings) if (tab.file === path) await tab.flush();
+			},
+			after: (path) => {
+				for (const tab of this.settings) if (tab.file === path) tab.reload();
+			},
+		};
 		this.subscriptions = [
 			// Collections-changed also fires when an environment is renamed or recoloured.
 			app.onCollectionsChanged(environmentChanged),
@@ -273,6 +282,22 @@ export class RequestTab {
 
 	jsonAction(action: JsonAction, path: string): Promise<string | undefined> {
 		return this.view.call("jsonAction", action, path);
+	}
+
+	/** Keeps a value from the JSON tree as a variable until restart, and takes it again after each send. */
+	async saveAsVariable(path: string): Promise<void> {
+		const value = await this.jsonAction("copyValue", path);
+		if (value === undefined) return;
+		const { nameFromPath } = await import("../core/after-response");
+		const name = await vscode.window.showInputBox({
+			title: "Save as variable",
+			prompt: `Set from ${path} after each send, and kept until CarbonWire restarts. Choose where it's kept in the request's Tests tab.`,
+			value: nameFromPath(path),
+			validateInput: (text) => (/^[\w$.-]+$/.test(text.trim()) ? undefined : "Use letters, digits, _, -, . or $."),
+		});
+		if (!name?.trim()) return;
+		this.panels.app.setRuntimeVariable(name.trim(), value);
+		await this.view.call("addVariableAction", name.trim(), path);
 	}
 
 	async flush(): Promise<void> {
@@ -525,6 +550,11 @@ export class SettingsTab {
 		} catch (e) {
 			void vscode.window.showErrorMessage(`Couldn't save ${basename(this.file)}: ${e instanceof Error ? e.message : String(e)}`);
 		}
+	}
+
+	/** Shows the file again after something else wrote to it. */
+	reload(): void {
+		this.panel.webview.html = webviewHtml(this.panel.webview, this.panels.extensionUri, "settings");
 	}
 
 	/** Reloads the page, because secrets are looked up by the environment's file name. */

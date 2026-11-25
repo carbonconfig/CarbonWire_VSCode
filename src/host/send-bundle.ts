@@ -8,4 +8,5 @@ export * from "../core/export/collection";
 export * from "../core/export/zip";
 export * from "../core/cookies";
 export * from "../core/header-presets";
+export * from "../core/after-response";
 export * from "./exporter";

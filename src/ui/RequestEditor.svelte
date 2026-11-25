@@ -9,6 +9,10 @@
 	import type { SendResult } from "../core/sender";
 	import type { VariableInfo } from "../core/variables";
 	import { suggestHeaderNames, suggestHeaderValues } from "../core/suggest";
+	import { withValue } from "../core/variables";
+	import type { Action } from "@opencollection/types/common/actions";
+	import type { Assertion } from "@opencollection/types/common/assertions";
+	import TestsEditor from "./TestsEditor.svelte";
 	import type { SendProgress } from "../core/transport/types";
 	import type { EnvironmentEntry, RequestLayout } from "./types";
 	import { icon } from "./actions";
@@ -180,6 +184,7 @@
 	const pathParams = $derived(params.filter((p) => p.type === "path"));
 	const queryParams = $derived(params.filter((p) => p.type === "query"));
 	const method = $derived((http.method ?? "GET").toUpperCase());
+	const testCount = $derived((request.runtime?.assertions?.length ?? 0) + (request.runtime?.actions?.length ?? 0));
 
 	const changed = () => autosave.schedule();
 
@@ -223,6 +228,40 @@
 	function setAuth(next: Auth | undefined) {
 		http.auth = next;
 		changed();
+	}
+
+	/** Checks and variables live in the request's runtime section, as OpenCollection keeps them. */
+	function setTests(assertions: Assertion[], actions: Action[]) {
+		const runtime = { ...request.runtime };
+		if (assertions.length) runtime.assertions = assertions;
+		else delete runtime.assertions;
+		if (actions.length) runtime.actions = actions;
+		else delete runtime.actions;
+		if (Object.keys(runtime).length) request.runtime = runtime;
+		else delete request.runtime;
+		changed();
+	}
+
+	/** Variables a response set for this request go in its own file, which this tab saves. */
+	function keepRequestVariables(next: SendResult) {
+		const sets = next.tests?.variables.filter((v) => v.scope === "request" && v.value !== undefined) ?? [];
+		if (sets.length === 0) return;
+		const variables = [...(request.runtime?.variables ?? [])];
+		for (const v of sets) {
+			const at = variables.findIndex((existing) => existing.name === v.name);
+			if (at >= 0) variables[at] = withValue(variables[at]!, v.value!);
+			else variables.push({ name: v.name, value: v.value! });
+		}
+		request.runtime = { ...request.runtime, variables };
+		changed();
+		void refreshVariables();
+	}
+
+	/** From the JSON tree's menu: a variable taken from this path after each send, until restart to begin with. */
+	export function addVariableAction(variable: string, path: string) {
+		const actions = [...(request.runtime?.actions ?? [])];
+		actions.push({ type: "set-variable", phase: "after-response", selector: { expression: path, method: "jsonq" }, variable: { name: variable, scope: "runtime" } });
+		setTests([...(request.runtime?.assertions ?? [])], actions);
 	}
 
 	function setSettings(next: LevelSettings) {
@@ -388,6 +427,7 @@
 		try {
 			await autosave.flush();
 			result = await controller.send(name, snapshot(), abort.signal, (next) => (progress = next));
+			keepRequestVariables(result);
 			restoredAt = undefined;
 			shownExample = undefined;
 		} catch (e) {
@@ -509,6 +549,7 @@
 			<button class:is-active={tab === "headers"} onclick={() => (tab = "headers")}>Headers {#if http.headers?.length}<span class="carbonwire-count">{http.headers.length}</span>{/if}</button>
 			<button class:is-active={tab === "body"} onclick={() => (tab = "body")}>Body</button>
 			<button class:is-active={tab === "auth"} onclick={() => (tab = "auth")}>Auth</button>
+			<button class:is-active={tab === "tests"} onclick={() => (tab = "tests")}>Tests {#if testCount}<span class="carbonwire-count">{testCount}</span>{/if}</button>
 			<button class:is-active={tab === "settings"} onclick={() => (tab = "settings")}>Settings {#if request.settings && Object.keys(request.settings).length}<span class="carbonwire-count">{Object.keys(request.settings).length}</span>{/if}</button>
 			<button class:is-active={tab === "code"} onclick={() => (tab = "code")}>Code</button>
 			{#if examples.length > 0}<button class:is-active={tab === "examples"} onclick={() => (tab = "examples")}>Examples <span class="carbonwire-count">{examples.length}</span></button>{/if}
@@ -567,6 +608,8 @@
 			<BodyEditor bind:this={bodyEditor} body={http.body} onchange={setBody} />
 		{:else if tab === "auth"}
 			<AuthEditor auth={http.auth} onchange={setAuth} />
+		{:else if tab === "tests"}
+			<TestsEditor assertions={request.runtime?.assertions ?? []} actions={request.runtime?.actions ?? []} onchange={setTests} />
 		{:else if tab === "settings"}
 			<RequestSettings settings={request.settings as LevelSettings | undefined} onchange={setSettings} level="request" />
 		{:else if tab === "code"}

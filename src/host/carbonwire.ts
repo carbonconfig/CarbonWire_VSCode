@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { isAbsolute } from "node:path";
 import * as vscode from "vscode";
 import type { OAuth2Tokens } from "../core/auth/oauth2";
-import type { HttpRequest, Variable } from "../core/model";
+import type { Folder, HttpRequest, OpenCollection, SecretVariable, Variable } from "../core/model";
 import { buildRequest } from "../core/request-builder";
 import type { SendResult } from "../core/sender";
 import { insertKey, type SortOrder } from "../core/storage/order";
@@ -11,7 +11,9 @@ import { CollectionStore } from "../core/storage/store";
 import { Exclusions } from "../core/storage/exclude";
 import { COLLECTION_FILE, compare, FOLDER_FILE, isYaml, type CollectionNode } from "../core/storage/tree";
 import { TransportError, type SendProgress, type Transport } from "../core/transport/types";
-import { describeScope, isDynamicVariable, mergeVariables, resolveEnvironment, variableValue, type SourceLayer, type VariableInfo } from "../core/variables";
+import { describeScope, interpolate, withValue, isDynamicVariable, mergeVariables, resolveEnvironment, variableValue, type Scope, type SourceLayer, type VariableInfo } from "../core/variables";
+import type { ActionVariableScope } from "@opencollection/types/common/actions";
+import type { AfterResponse } from "../core/after-response";
 import type { ConsoleEntry, EnvironmentEntry, RequestLayout } from "../ui/types";
 import { CollectionIndex } from "./collection-index";
 import { debounce } from "./debounce";
@@ -54,6 +56,13 @@ function workspaceRoots(): WorkspaceRoot[] {
 	return (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === "file").map((f) => ({ name: f.name, fsPath: f.uri.fsPath }));
 }
 
+/** Sets a variable's value, keeping its type or selected variant, or adds it at the end. */
+function upsertVariable<T extends Variable | SecretVariable>(variables: readonly T[], name: string, value: string): (T | Variable)[] {
+	const at = variables.findIndex((v) => v.name === name);
+	if (at < 0) return [...variables, { name, value }];
+	return variables.map((v, i) => (i === at ? withValue(v as Variable, value) : v));
+}
+
 /** Everything outside the webviews: collection files, the index, environments, secrets, history and sending. */
 export class CarbonWire implements vscode.Disposable {
 	settings: Settings = readSettings();
@@ -65,6 +74,10 @@ export class CarbonWire implements vscode.Disposable {
 	readonly secrets: Secrets;
 	readonly actions: ItemActions;
 	readonly network: Network;
+	/** Variables responses set with the runtime scope; kept in memory until CarbonWire restarts. */
+	readonly runtime = new Map<string, string>();
+	/** Set by the tabs: an open editor of a file saves its edits before a response writes a variable there, and reloads after. */
+	writeHooks?: { before(path: string): Promise<void>; after(path: string): void };
 	/** The last sends, newest last, for the console. */
 	readonly console: ConsoleEntry[] = [];
 	private consoleId = 0;
@@ -278,7 +291,8 @@ export class CarbonWire implements vscode.Disposable {
 			});
 			record({ response: result.response });
 			this.log(time, name, path, request, result);
-			return result;
+			const tests = await this.afterResponse(path, request, result, scope);
+			return tests ? { ...result, tests } : result;
 		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
 			if (!signal.aborted) {
@@ -425,7 +439,76 @@ export class CarbonWire implements vscode.Disposable {
 		const context = collection && path ? await this.store.loadContext(root, path) : { collectionRoot: "", collection: {}, chain: [] };
 		const name = this.activeEnvironment();
 		const [variables, globals] = await Promise.all([this.loadVariables(name ? this.environmentFiles(name) : []), this.loadVariables(this.globalsFiles())]);
-		return { root, context, scope: requestScope(context, request, variables, globals) };
+		return { root, context, scope: requestScope(context, request, variables, globals, this.runtime) };
+	}
+
+	/** A runtime variable set by hand, such as from the JSON tree's menu; request tabs show it straight away. */
+	setRuntimeVariable(name: string, value: string): void {
+		this.runtime.set(name, value);
+		this.documentsChangedEmitter.fire();
+	}
+
+	/** Runs the request's checks and keeps the variables it takes from the response. */
+	private async afterResponse(path: string | undefined, request: HttpRequest, result: SendResult, scope: Scope): Promise<AfterResponse | undefined> {
+		const runtime = request.runtime;
+		if (!runtime?.assertions?.length && !runtime?.actions?.length) return undefined;
+		const { readResponse, runActions, runChecks } = await import("../core/after-response");
+		const res = readResponse(result.response);
+		const checks = runChecks(res, runtime.assertions, (text) => interpolate(text, scope));
+		const variables = runActions(res, runtime.actions);
+		let changed = false;
+		for (const v of variables) {
+			if (v.value === undefined) continue;
+			try {
+				await this.setVariable(path, v.scope, v.name, v.value);
+				changed = true;
+			} catch (e) {
+				v.error = e instanceof Error ? e.message : String(e);
+			}
+		}
+		if (changed) this.documentsChangedEmitter.fire();
+		return { checks, variables };
+	}
+
+	/**
+	 * Keeps a variable a response set: in memory for the runtime scope, else in the environment's,
+	 * collection's or folder's file, or secret storage for a secret. The request scope is left to its tab.
+	 */
+	async setVariable(path: string | undefined, scope: ActionVariableScope, name: string, value: string): Promise<void> {
+		if (scope === "runtime") {
+			this.runtime.set(name, value);
+			return;
+		}
+		if (scope === "request") return;
+		if (scope === "environment") {
+			const environment = this.activeEnvironment();
+			const file = environment ? this.environmentFiles(environment)[0] : undefined;
+			if (!file) throw new Error("No environment is active, so it wasn't kept.");
+			return this.writeVariable(file, name, value);
+		}
+		const collection = path === undefined ? undefined : this.collectionFor(path);
+		if (!collection || path === undefined) throw new Error("This request isn't saved in a collection.");
+		if (scope === "collection") return this.writeVariable(joinPath(collection.root, COLLECTION_FILE), name, value);
+		const dir = dirname(path);
+		if (dir === collection.root) throw new Error("This request isn't in a folder.");
+		return this.writeVariable(joinPath(dir, FOLDER_FILE), name, value);
+	}
+
+	private async writeVariable(file: string, name: string, value: string): Promise<void> {
+		await this.writeHooks?.before(file);
+		const exists = this.store.exists(file);
+		if (basename(file) !== COLLECTION_FILE && basename(file) !== FOLDER_FILE) {
+			const environment = await this.store.loadEnvironment(file);
+			const existing = environment.variables?.find((v) => v.name === name);
+			if (existing && "secret" in existing && existing.secret) await this.secrets.set(file, name, value);
+			else await this.store.saveEdited(file, { ...environment, variables: upsertVariable(environment.variables ?? [], name, value) });
+		} else {
+			const doc = exists ? await this.store.loadDocument<OpenCollection | Folder>(file) : ({ info: { name: basename(dirname(file)), type: "folder" } } as Folder);
+			const defaults = doc.request ?? {};
+			await this.store.saveEdited(file, { ...doc, request: { ...defaults, variables: upsertVariable(defaults.variables ?? [], name, value) } });
+			if (!exists) this.index.created(file);
+		}
+		this.writeHooks?.after(file);
 	}
 
 	/** The scopes {@link scopeFor} layers, with their names and files. */
@@ -445,6 +528,7 @@ export class CarbonWire implements vscode.Disposable {
 			{ source: "environment", label: name, ...environment },
 			...(context?.chain.slice(1) ?? []).map((defaults, i): SourceLayer => ({ source: "folder", variables: defaults?.variables, label: basename(dirs[i]!), file: joinPath(dirs[i]!, FOLDER_FILE) })),
 			{ source: "request", variables: request.runtime?.variables },
+			{ source: "runtime", variables: [...this.runtime].map(([name, value]) => ({ name, value })) },
 		];
 	}
 

@@ -185,6 +185,37 @@ describe("Request and settings tabs", () => {
 		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
 	});
 
+	it("runs a request's checks and keeps the variables it takes from the response", async () => {
+		const root = join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, ROOT);
+		const file = `${ROOT}/tests.yml`;
+		const set = (expression: string, name: string, scope: string) => `    - type: set-variable\n      phase: after-response\n      selector:\n        expression: "${expression}"\n        method: jsonq\n      variable:\n        name: ${name}\n        scope: ${scope}\n`;
+		await writeFile(
+			join(root, "tests.yml"),
+			`info:\n  name: tests\nhttp:\n  method: GET\n  url: ${url}\nruntime:\n  assertions:\n    - expression: res.status\n      operator: eq\n      value: "200"\n    - expression: $.items[0].name\n      operator: eq\n      value: item 0\n    - expression: $.items\n      operator: isEmpty\n  actions:\n` +
+				set("$.items[1].name", "secondName", "runtime") + set("$.items[2].id", "thirdId", "collection") + set("$.items[199].id", "lastId", "request"),
+		);
+		await eventually(() => api.app.collectionFor(file) !== undefined, "the request is indexed");
+		api.panels.openRequest(file);
+		await eventually(() => (tabFor(file)?.loads ?? 0) > 0, "the tab has loaded");
+		const tab = tabFor(file)!;
+		await eventually(() => tab.panel.active, "the tab is focused");
+		await vscode.commands.executeCommand("carbonwire.sendRequest");
+		await eventually(async () => (await shown(tab))?.status === 200, "the response is shown");
+
+		// The response's data arrives a moment before the page draws its Tests tab.
+		await eventually(async () => (await tab.view.call("testText", ".carbonwire-response-bar button.is-failed .carbonwire-count")) === "2/3", "the Tests tab says two of three checks pass");
+		assert.equal(api.app.runtime.get("secondName"), "item 1");
+		await eventually(async () => (await api.app.store.loadDocument<{ request?: { variables?: { name: string; value?: unknown }[] } }>(`${ROOT}/opencollection.yml`)).request?.variables?.some((v) => v.name === "thirdId" && v.value === "2") === true, "the collection keeps its variable");
+		await eventually(async () => (await api.app.store.loadRequest(file)).runtime?.variables?.some((v) => v.name === "lastId" && v.value === "199") === true, "the request keeps its variable");
+		const variables = new Map((await api.app.variables(file, await api.app.store.loadRequest(file))).map((v) => [v.name, v]));
+		assert.equal(variables.get("secondName")?.source, "runtime");
+
+		assert.ok(await tab.view.call("testClick", ".carbonwire-response-bar button.is-failed"));
+		await eventually(async () => (await tab.view.call("testText", ".carbonwire-test-results"))?.includes("$.items is empty") === true, "the results list the failed check");
+		assert.deepEqual(api.panels.problems, []);
+		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+	});
+
 	it("goes to a request picked by name", async () => {
 		const [first] = listRequests(await api.app.collections());
 		assert.ok(first);
@@ -231,7 +262,7 @@ describe("Request and settings tabs", () => {
 
 	it("keeps the tab it was showing when a hidden tab comes back", async () => {
 		const tab = [...api.panels.requests].find((t) => t.panel.title === "Slow")!;
-		assert.ok(await tab.view.call("testClick", ".carbonwire-pane-request .carbonwire-tabs button:nth-of-type(6)"));
+		assert.ok(await tab.view.call("testClick", ".carbonwire-pane-request .carbonwire-tabs button:nth-of-type(7)"));
 		await eventually(async () => (await tab.view.call("testState"))?.view.tab === "code", "the Code tab is shown");
 		api.panels.openDraft({ name: "Another" });
 		await eventually(() => !tab.panel.visible, "the tab is hidden");

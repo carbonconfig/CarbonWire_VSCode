@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A request's new **Tests** tab checks the response without code, such as `res.status` equals 200, and takes values from it into variables, such as `$.token` after a login. Results show in the response's Tests tab. Variables are kept until restart, or written to the active environment, the collection, a folder or the request. Right-click a value in the JSON tree and choose **Save as variable…** to start one.
+- Checks and post-response variables in Bruno collections are now imported and run, instead of being skipped.
 - Typing `{{` suggests the variables in scope, with their values; `{{$` suggests the dynamic values. Header names and their usual values are suggested as you type them.
 - **CarbonWire: Go to request** finds any request by name, collection or folder. It's also in the CarbonWire sidebar's menu; assign it a keyboard shortcut if you like.
 - Bulk edit params, headers and form fields as `name: value` lines.

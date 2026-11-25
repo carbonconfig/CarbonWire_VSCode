@@ -26,7 +26,7 @@ CarbonWire is free and open source, under the MIT license. Also [available for O
 
 **Requests**
 - Any method, query and path parameters, headers, and JSON, XML, text, form, multipart or file bodies
-- `{{variables}}` everywhere, shown in blue when defined and red when not, plus Postman's dynamic values: `{{$guid}}`, `{{$timestamp}}`, `{{$randomEmail}}` and about 120 more
+- `{{variables}}` everywhere, shown in blue when defined and red when not, plus Postman's dynamic values: `{{$guid}}`, `{{$timestamp}}`, `{{$randomEmail}}` and about 120 more. Hover one to see its value and where it's set; `Ctrl+Click` (`Cmd+Click`) opens it there to edit
 - Auth: Basic, Bearer token, API key, Digest, OAuth 2.0 (authorization code with PKCE, implicit, client credentials and password), OAuth 1.0, AWS Signature v4, NTLM, Hawk, Akamai EdgeGrid, JWT Bearer, ASAP and WSSE. Authorization code and implicit sign in through your browser.
 - Settings for each request, folder or collection: timeout, redirects (how many, keeping the method or the Authorization header), URL encoding, HTTP/1.1 or HTTP/2, certificate checks, TLS versions and cipher suites, cookies, and which default headers to send
 - Paste a curl command into the URL bar and the whole request fills in. Copy any request back out as curl.
@@ -89,7 +89,7 @@ Ranges of medians over several runs on an Intel Core i5-1135G7 laptop with VS Co
 
 | Source | What comes across |
 |---|---|
-| Postman | Collections (v1, v2.0 and v2.1), environments, globals, and a whole data export (the .zip, or its folder) |
+| Postman | Collections (v1, v2.0 and v2.1), environments, globals, and a whole data export (the .zip, or its folder), choosing which of its collections and environments to bring in |
 | Insomnia | v4 JSON and v5 YAML exports, with environments |
 | Bruno | `.bru` collections and OpenCollection YAML folders |
 | HTTPie | Desktop and web exports |
@@ -113,6 +113,7 @@ Auth that OpenCollection files have no place for (Hawk, Akamai EdgeGrid, JWT Bea
 | Find in the response or body | `Ctrl+F` (`Cmd+F`) |
 | Comment out JSON body lines | `Ctrl+/` (`Cmd+/`) |
 | Cancel a request in flight | `Escape` in the response pane |
+| Edit a `{{variable}}` where it's set | `Ctrl+Click` (`Cmd+Click`) on it |
 | Move through the sidebar | Arrow keys, `Home` and `End` |
 | Open a sidebar item's menu | `Shift+F10`, or right-click |
 
@@ -122,8 +123,9 @@ Commands in the Command Palette: **CarbonWire: Open collections**, **New request
 
 | Setting | Default | What it does |
 |---|---|---|
-| `carbonwire.collectionsFolder` | `api-collections` | Where new collections are created, relative to the workspace folder. Existing collections are found anywhere in the workspace. |
+| `carbonwire.collectionsFolder` | `api-collections` | Where new collections are created, relative to the workspace folder. Existing collections are found anywhere in the workspace, except in hidden folders and those in `carbonwire.exclude`. |
 | `carbonwire.environmentsFolder` | `api-collections/environments` | Where environments are kept, in each workspace folder. They're shared by every collection. Same-named environments in several workspace folders are merged: each variable takes the first value that isn't empty. Follows the folder when you move or rename it in VS Code. |
+| `carbonwire.exclude` | | Folders and files never searched for collections, as glob patterns such as `**/tests/fixtures`. Folders whose names start with a dot and those in `files.exclude` are skipped too, unless the collections or environments folder is inside one. |
 | `carbonwire.responseSizeLimit` | 20 | In megabytes. Larger bodies are cut short in memory; the full size is still shown. |
 | `carbonwire.historySize` | 100 | How many recent requests to keep. Set to 0 to turn history off. |
 | `carbonwire.wrapLongLines` | On | Wraps long lines in responses instead of scrolling sideways. Also on the response toolbar. |

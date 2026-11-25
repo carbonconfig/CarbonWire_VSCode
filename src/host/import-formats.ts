@@ -2,5 +2,5 @@
 export { importBrunoFolder } from "../core/import/bruno";
 export { importText } from "../core/import/detect";
 export { writeImport } from "../core/import/writer";
-export { importPostmanExport } from "../core/import/postman-export";
+export { importPostmanExport, isAccountExport, selectFromExport } from "../core/import/postman-export";
 export { unzip } from "../core/import/unzip";

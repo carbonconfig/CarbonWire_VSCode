@@ -166,6 +166,12 @@ export class Importer {
 			void vscode.window.showErrorMessage("This file contains requests. Use Import into CarbonWire instead of Import environment.");
 			return;
 		}
+		const { isAccountExport } = await import("./import-formats");
+		if (isAccountExport(result)) {
+			const chosen = await this.chooseFromExport(result, source);
+			if (!chosen) return;
+			result = chosen;
+		}
 		const target = await this.chooseTarget(result, options);
 		if (!target) return;
 		const resolutions = await this.resolveConflicts([...result.environments, ...result.collections.flatMap((c) => c.environments)]);
@@ -176,6 +182,30 @@ export class Importer {
 		} catch (e) {
 			void vscode.window.showErrorMessage(`Couldn't import ${source}: ${e instanceof Error ? e.message : String(e)}`);
 		}
+	}
+
+	/** A whole Postman account: which of its collections and environments to import, all ticked to begin with. */
+	private async chooseFromExport(result: ImportResult, source: string): Promise<ImportResult | undefined> {
+		type Item = vscode.QuickPickItem & { collection?: number; environment?: number };
+		const separator = (label: string): Item => ({ label, kind: vscode.QuickPickItemKind.Separator });
+		const items: Item[] = [
+			separator("Collections"),
+			...result.collections.map((c, i): Item => {
+				const { requests, folders } = countItems(c.items);
+				return { label: `$(folder) ${c.name}`, description: [plural(requests, "request"), ...(folders ? [plural(folders, "folder")] : []), ...(c.environments.length ? [plural(c.environments.length, "environment")] : [])].join(", "), collection: i, picked: true };
+			}),
+			separator("Environments"),
+			...result.environments.map((e, i): Item => ({ label: `$(symbol-variable) ${e.name}`, description: plural(e.variables.length, "variable"), environment: i, picked: true })),
+		].filter((item, i, all) => item.kind !== vscode.QuickPickItemKind.Separator || (all[i + 1] !== undefined && all[i + 1]!.kind !== vscode.QuickPickItemKind.Separator));
+		const picked = await vscode.window.showQuickPick(items, { title: `Import from ${source}`, placeHolder: "Choose what to import", canPickMany: true, ignoreFocusOut: true });
+		if (!picked) return undefined;
+		if (picked.length === 0) {
+			void vscode.window.showInformationMessage("Nothing was chosen, so nothing was imported.");
+			return undefined;
+		}
+		const { selectFromExport } = await import("./import-formats");
+		const has = (key: "collection" | "environment") => new Set(picked.flatMap((p) => (p[key] === undefined ? [] : [p[key]])));
+		return selectFromExport(result, has("collection"), has("environment"));
 	}
 
 	/** What was found, and where it goes: a new collection, or into an existing one. */

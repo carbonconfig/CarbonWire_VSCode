@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
 - A request's new **Tests** tab checks the response without code, such as `res.status` equals 200, and takes values from it into variables, such as `$.token` after a login. Results show in the response's Tests tab. Variables are kept until restart, or written to the active environment, the collection, a folder or the request. Right-click a value in the JSON tree and choose **Save as variable…** to start one.
 - Checks and post-response variables in Bruno collections are now imported and run, instead of being skipped.

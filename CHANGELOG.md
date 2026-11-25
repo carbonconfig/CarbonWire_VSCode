@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- JSON bodies are checked as you type. A mistake, such as a missing comma or an unclosed bracket, is underlined where it is and described below the editor; select the description to go to it. Comments and unquoted `{{variables}}` are accepted, as they're handled before sending.
 - Hover a `{{variable}}` to see its value and where it's set: the environment, globals, the collection, a folder or the request. Secret values stay masked. `Ctrl+Click` (`Cmd+Click`) opens it there to edit, or adds one that isn't set to the active environment.
 - Importing a whole Postman data export first lists its collections and environments, all ticked, so you can leave some out.
 - Collections in hidden folders, such as `.vscode-test`, are no longer listed, nor those in folders `files.exclude` hides. The new `carbonwire.exclude` setting leaves out more, such as `**/tests/fixtures`.

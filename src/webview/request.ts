@@ -66,6 +66,7 @@ const rpc = new Rpc<RequestView, RequestHost>((message) => vscode.postMessage(me
 		target?.dispatchEvent(new MouseEvent(type, { bubbles: true }));
 		return target !== null;
 	},
+	testText: (selector) => document.querySelector(selector)?.textContent ?? undefined,
 	testHover: async (selector, click) => {
 		const target = document.querySelector<HTMLElement>(selector);
 		if (!target) return undefined;

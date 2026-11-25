@@ -33,6 +33,7 @@ CarbonWire is free and open source, under the MIT license. Also [available for O
 - The request as code: cURL, raw HTTP, JavaScript `fetch`, Python `requests` or Go
 - Header presets: save a set of headers once and add it to any request
 - Comment out lines of a JSON body with `Ctrl+/` (`Cmd+/`). Commented lines aren't sent.
+- Mistakes in a JSON body, such as a missing comma or an unclosed bracket, are underlined where they are and described below the editor. Comments and unquoted `{{variables}}` count as fine.
 - A request opens on the first of Body, Params, Auth and Headers that has something in it, and each tab comes back as you left it: its tabs, response view and JSONPath filter
 - Start a request without saving it, then save it to a collection when you want to keep it
 
@@ -191,7 +192,6 @@ CarbonWire is also an Obsidian plugin, with the same features, for keeping API c
 
 ## Coming next
 
-- [ ] JSON validation in the body editor, with mistakes marked where they are
 - [ ] Run a request once for each row of a CSV file or pasted list, with assertions to check every response
 - [ ] GraphQL
 - [ ] gRPC

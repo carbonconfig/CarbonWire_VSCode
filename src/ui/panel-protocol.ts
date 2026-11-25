@@ -101,6 +101,8 @@ export type RequestView = {
 	testClick(selector: string, type?: "click" | "dblclick"): boolean;
 	/** For tests: the variable tooltip's text after hovering the middle of an element, or Ctrl/Cmd+Click there. */
 	testHover(selector: string, click?: boolean): string | undefined;
+	/** For tests: the text of the first element matching `selector`, or undefined if there's none. */
+	testText(selector: string): string | undefined;
 };
 
 export type SettingsTabState =

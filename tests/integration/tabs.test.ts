@@ -106,6 +106,34 @@ describe("Request and settings tabs", () => {
 		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
 	});
 
+	it("marks a mistake in a JSON body, and accepts comments and unquoted variables", async () => {
+		const root = join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, ROOT);
+		const broken = `${ROOT}/broken.yml`;
+		const fine = `${ROOT}/fine.yml`;
+		const write = (name: string, json: string) =>
+			writeFile(join(root, name), `info:\n  name: ${name}\nhttp:\n  method: POST\n  url: ${url}\n  body:\n    type: json\n    data: ${JSON.stringify(json)}\n`);
+		await write("broken.yml", '{\n  "a": 1\n  "b": 2\n}');
+		await write("fine.yml", '{\n  // "old": true,\n  "id": {{tabsBase}},\n}');
+		await eventually(() => api.app.collectionFor(broken) !== undefined && api.app.collectionFor(fine) !== undefined, "the requests are indexed");
+
+		api.panels.openRequest(broken);
+		await eventually(() => (tabFor(broken)?.loads ?? 0) > 0, "the broken request has loaded");
+		const tab = tabFor(broken)!;
+		await eventually(async () => (await tab.view.call("testText", ".carbonwire-json-problem")) !== undefined, "the mistake is described");
+		assert.match((await tab.view.call("testText", ".carbonwire-json-problem"))!, /^\s*Line 3, column 3\s+A comma is missing before this\.\s*$/);
+		assert.equal(await tab.view.call("testText", ".cm-content .carbonwire-json-error"), '"');
+
+		api.panels.openRequest(fine);
+		await eventually(() => (tabFor(fine)?.loads ?? 0) > 0, "the other request has loaded");
+		const other = tabFor(fine)!;
+		await eventually(async () => (await other.view.call("testText", ".cm-content")) !== undefined, "its body is shown");
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		assert.equal(await other.view.call("testText", ".carbonwire-json-problem"), undefined);
+		assert.deepEqual(api.panels.problems, []);
+		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+	});
+
 	it("sends an unsaved request and keeps it in history", async () => {
 		api.panels.openDraft({ name: "Draft", request: { http: { method: "GET", url: url.replace("/items", "/small") } } });
 		await eventually(() => [...api.panels.requests].some((t) => !t.file && t.panel.title === "Draft" && t.loads > 0), "the draft has loaded");

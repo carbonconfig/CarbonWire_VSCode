@@ -20,6 +20,19 @@ describe("findYaml", () => {
 		expect(found).toEqual(["a.yml", "api/b.yaml", "api/deep/er/C.YML"]);
 	});
 
+	it("leaves out what the skip check names, by path relative to the base", async () => {
+		const dir = join(root, "skip");
+		for (const f of ["keep/a.yml", "tests/fixtures/b.yml", ".hidden/c.yml", "keep/.d.yml"]) {
+			await mkdir(join(dir, f, ".."), { recursive: true });
+			await writeFile(join(dir, f), "x: 1\n");
+		}
+		const seen: string[] = [];
+		const skip = (path: string, name: string) => (seen.push(path), name.startsWith(".") || path === "ws/tests/fixtures");
+		const found = (await findYaml(dir, skip, "ws")).map((p) => relative(dir, p).split("\\").join("/")).sort();
+		expect(found).toEqual(["keep/a.yml"]);
+		expect(seen).toContain("ws/keep/a.yml");
+	});
+
 	it("returns nothing for a folder that doesn't exist", async () => {
 		expect(await findYaml(join(root, "missing"))).toEqual([]);
 	});

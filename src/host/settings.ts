@@ -79,6 +79,13 @@ export function usesVSCodeProxy(mode: ProxyMode): boolean {
 	return Boolean(http.get<string>("proxy")) || ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].some((name) => process.env[name]);
 }
 
+/** Patterns never searched for collections in a workspace folder: those in `files.exclude` that are on, and CarbonWire's own. */
+export function excludePatterns(folder: vscode.Uri): string[] {
+	const files = vscode.workspace.getConfiguration("files", folder).get<Record<string, unknown>>("exclude", {});
+	const own = vscode.workspace.getConfiguration(SECTION, folder).get<unknown[]>("exclude", []);
+	return [...Object.keys(files).filter((glob) => files[glob] === true), ...own.filter((glob) => typeof glob === "string")];
+}
+
 export function affectsSetting(event: vscode.ConfigurationChangeEvent, key: string): boolean {
 	return event.affectsConfiguration(`${SECTION}.${key}`);
 }

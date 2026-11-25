@@ -32,12 +32,18 @@ export class PathMap {
 
 	/** Undefined for a file outside every workspace folder. */
 	toPath(fsPath: string): string | undefined {
+		const at = this.locate(fsPath);
+		if (!at) return undefined;
+		if (this.roots.length === 1) return at.path;
+		return at.path ? `${at.root.name}/${at.path}` : at.root.name;
+	}
+
+	/** The workspace folder holding a disk path, and the "/"-separated path inside it. */
+	locate(fsPath: string): { root: WorkspaceRoot; path: string } | undefined {
 		for (const root of this.roots) {
 			const rel = relative(root.fsPath, fsPath);
 			if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) continue;
-			const path = rel.split(sep).join("/");
-			if (this.roots.length === 1) return path;
-			return path ? `${root.name}/${path}` : root.name;
+			return { root, path: rel.split(sep).join("/") };
 		}
 		return undefined;
 	}

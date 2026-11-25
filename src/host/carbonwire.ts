@@ -8,6 +8,7 @@ import type { SendResult } from "../core/sender";
 import { insertKey, type SortOrder } from "../core/storage/order";
 import { basename, dirname, joinPath, movedPath, stem } from "../core/storage/paths";
 import { CollectionStore } from "../core/storage/store";
+import { Exclusions } from "../core/storage/exclude";
 import { compare, isYaml, type CollectionNode } from "../core/storage/tree";
 import { TransportError, type SendProgress, type Transport } from "../core/transport/types";
 import { mergeVariables, resolveEnvironment } from "../core/variables";
@@ -19,7 +20,7 @@ import { ItemActions } from "./item-actions";
 import { MetaCacheFile } from "./meta-cache";
 import { PathMap, type WorkspaceRoot } from "./paths";
 import { secretNames, Secrets } from "./secrets";
-import { affectsSetting, readSettings, State, updateSetting, usesVSCodeProxy, type Settings } from "./settings";
+import { affectsSetting, excludePatterns, readSettings, State, updateSetting, usesVSCodeProxy, type Settings } from "./settings";
 import { findYaml } from "./find-yaml";
 import { cookieFile, Network } from "./network";
 import type { SnippetLanguage } from "../core/export/snippet";
@@ -68,6 +69,8 @@ export class CarbonWire implements vscode.Disposable {
 	readonly console: ConsoleEntry[] = [];
 	private consoleId = 0;
 	private paths = new PathMap(workspaceRoots());
+	/** By workspace folder; cleared when the settings they come from change. */
+	private readonly exclusions = new Map<string, Exclusions>();
 	private transport?: Transport;
 	private oauth2?: OAuth2Tokens;
 	private readonly disposables: vscode.Disposable[] = [];
@@ -380,6 +383,8 @@ export class CarbonWire implements vscode.Disposable {
 		this.store.invalidateUnder(from);
 		this.store.invalidateUnder(to);
 		this.index.renamed(from, to);
+		const toFsPath = this.paths.toFsPath(to);
+		if (toFsPath !== undefined && this.excluded(toFsPath)) this.index.deleted(to);
 		const toRoot = this.index.collectionFor(to)?.root;
 		if (fromRoot !== undefined && toRoot !== undefined) void this.store.followSidecar({ root: fromRoot, path: from }, { root: toRoot, path: to }).catch(() => undefined);
 		void this.history.moveSource(from, to).catch(() => undefined);
@@ -465,9 +470,31 @@ export class CarbonWire implements vscode.Disposable {
 	}
 
 	private async listYaml(dir?: string): Promise<string[]> {
-		const roots = dir ? [this.paths.toFsPath(dir)].filter((p) => p !== undefined) : this.paths.roots.map((r) => r.fsPath);
-		const found = (await Promise.all(roots.map(findYaml))).flat();
-		return found.flatMap((fsPath) => this.paths.toPath(fsPath) ?? []);
+		const targets = dir ? [this.paths.toFsPath(dir)].filter((p) => p !== undefined) : this.paths.roots.map((r) => r.fsPath);
+		const found = await Promise.all(
+			targets.map(async (fsPath) => {
+				const at = this.paths.locate(fsPath);
+				if (!at || this.excluded(fsPath)) return [];
+				const exclusions = this.exclusionsFor(at.root);
+				return findYaml(fsPath, (path, name) => exclusions.skips(path, name), at.path);
+			}),
+		);
+		return found.flat().flatMap((fsPath) => this.paths.toPath(fsPath) ?? []);
+	}
+
+	private exclusionsFor(root: WorkspaceRoot): Exclusions {
+		let exclusions = this.exclusions.get(root.fsPath);
+		if (!exclusions) {
+			exclusions = new Exclusions(excludePatterns(vscode.Uri.file(root.fsPath)), [this.settings.collectionsFolder, this.settings.environmentsFolder]);
+			this.exclusions.set(root.fsPath, exclusions);
+		}
+		return exclusions;
+	}
+
+	/** Outside the workspace, or in a folder never searched for collections. */
+	private excluded(fsPath: string): boolean {
+		const at = this.paths.locate(fsPath);
+		return !at || (at.path !== "" && this.exclusionsFor(at.root).excludes(at.path));
 	}
 
 	private watch(): void {
@@ -483,6 +510,7 @@ export class CarbonWire implements vscode.Disposable {
 			}),
 			vscode.workspace.onDidChangeWorkspaceFolders(() => {
 				this.paths = new PathMap(workspaceRoots());
+				this.exclusions.clear();
 				this.watchFolders();
 				void this.index.reset();
 			}),
@@ -520,6 +548,7 @@ export class CarbonWire implements vscode.Disposable {
 		const path = uri.scheme === "file" ? this.paths.toPath(uri.fsPath) : undefined;
 		if (path === undefined) return;
 		this.store.invalidate(path);
+		if (this.excluded(uri.fsPath)) return;
 		if (isYaml(path)) return this.index.created(path);
 		// A folder that appears, e.g. moved in from a terminal, is reported without its files.
 		if (basename(path).includes(".")) return;
@@ -535,8 +564,16 @@ export class CarbonWire implements vscode.Disposable {
 	}
 
 	private configurationChanged(e: vscode.ConfigurationChangeEvent): void {
+		const before = this.settings;
+		if (e.affectsConfiguration("carbonwire")) this.settings = readSettings();
+		// A collections or environments folder inside a hidden folder is searched, so it changes what's skipped.
+		const hidden = (s: Settings) => [s.collectionsFolder, s.environmentsFolder].some((f) => /(^|[/\\])\./.test(f));
+		const keptChanged = (affectsSetting(e, "collectionsFolder") || affectsSetting(e, "environmentsFolder")) && (hidden(before) || hidden(this.settings));
+		if (affectsSetting(e, "exclude") || e.affectsConfiguration("files.exclude") || keptChanged) {
+			this.exclusions.clear();
+			void this.index.reset();
+		}
 		if (!e.affectsConfiguration("carbonwire")) return;
-		this.settings = readSettings();
 		if (affectsSetting(e, "environmentsFolder")) this.index.rebuild();
 		if (affectsSetting(e, "historySize")) void this.history.prune();
 		if (["proxyUrl", "proxy", "clientCertificates", "caCertificates"].some((k) => affectsSetting(e, k))) void this.network.reload();

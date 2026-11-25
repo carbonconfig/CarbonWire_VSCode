@@ -1,6 +1,6 @@
 /// <reference types="mocha" />
 import * as assert from "node:assert/strict";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
@@ -97,6 +97,30 @@ describe("CarbonWire in VS Code", () => {
 		assert.equal((await app.store.loadRequest(target)).info?.name, "list all");
 		assert.equal((await app.history.latestFor(target))?.name, "list");
 		await eventually(() => hasRequest(target) && !hasRequest(LIST), "the tree shows the new name");
+	});
+
+	it("skips hidden folders, and folders in carbonwire.exclude", async () => {
+		const collection = async (dir: string, name: string) => {
+			await mkdir(join(root, dir), { recursive: true });
+			await writeFile(join(root, dir, "opencollection.yml"), `opencollection: 1.0.0\ninfo:\n  name: ${name}\n`);
+		};
+		const listed = (name: string) => app.index.collections().some((c) => c.name === name);
+		await collection(".hidden/Hidden", "Hidden");
+		await collection("tests/fixtures/Fixture", "Fixture");
+		await eventually(() => listed("Fixture"), "the fixture collection is listed");
+		assert.equal(listed("Hidden"), false, "a collection in a hidden folder isn't listed");
+
+		const config = vscode.workspace.getConfiguration("carbonwire");
+		await config.update("exclude", ["**/tests/fixtures"], vscode.ConfigurationTarget.Workspace);
+		try {
+			await eventually(() => !listed("Fixture"), "the excluded collection is gone");
+			await collection("tests/fixtures/Later", "Later");
+			await new Promise((resolve) => setTimeout(resolve, 500));
+			assert.equal(listed("Later"), false, "a collection created in an excluded folder isn't listed");
+		} finally {
+			await config.update("exclude", undefined, vscode.ConfigurationTarget.Workspace);
+		}
+		await eventually(() => listed("Fixture") && listed("Later"), "both are listed once the setting is cleared");
 	});
 
 	it("notices a folder deleted outside VS Code", async () => {

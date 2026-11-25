@@ -789,6 +789,16 @@
           "markdownDescription": "Where environments are kept, relative to each workspace folder. Environments are shared by every collection. Environments with the same name in several workspace folders are merged: each variable takes the first value that isn't empty, the first workspace folder's first.",
           "order": 2
         },
+        "carbonwire.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Folders and files never searched for collections, as glob patterns relative to each workspace folder, such as `**/tests/fixtures`. Folders whose names start with a dot, and those in `#files.exclude#`, are skipped too, unless the collections or environments folder is inside one.",
+          "order": 2
+        },
         "carbonwire.responseSizeLimit": {
           "type": "number",
           "default": 20,

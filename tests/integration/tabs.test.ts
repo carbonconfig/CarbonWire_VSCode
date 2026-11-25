@@ -1,6 +1,6 @@
 /// <reference types="mocha" />
 import * as assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
@@ -113,7 +113,7 @@ describe("Request and settings tabs", () => {
 		const write = (name: string, json: string) =>
 			writeFile(join(root, name), `info:\n  name: ${name}\nhttp:\n  method: POST\n  url: ${url}\n  body:\n    type: json\n    data: ${JSON.stringify(json)}\n`);
 		await write("broken.yml", '{\n  "a": 1\n  "b": 2\n}');
-		await write("fine.yml", '{\n  // "old": true,\n  "id": {{tabsBase}},\n}');
+		await write("fine.yml", '{"a":1, // why\n// "old": true,\n"id":{{tabsBase}},\n}');
 		await eventually(() => api.app.collectionFor(broken) !== undefined && api.app.collectionFor(fine) !== undefined, "the requests are indexed");
 
 		api.panels.openRequest(broken);
@@ -122,6 +122,12 @@ describe("Request and settings tabs", () => {
 		await eventually(async () => (await tab.view.call("testText", ".carbonwire-json-problem")) !== undefined, "the mistake is described");
 		assert.match((await tab.view.call("testText", ".carbonwire-json-problem"))!, /^\s*Line 3, column 3\s+A comma is missing before this\.\s*$/);
 		assert.equal(await tab.view.call("testText", ".cm-content .carbonwire-json-error"), '"');
+		// Format leaves a body with a mistake as it is.
+		const format = ".carbonwire-body-bar button[aria-label='Format JSON']";
+		const before = await readFile(join(root, "broken.yml"), "utf8");
+		assert.ok(await tab.view.call("testClick", format));
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+		assert.equal(await readFile(join(root, "broken.yml"), "utf8"), before);
 
 		api.panels.openRequest(fine);
 		await eventually(() => (tabFor(fine)?.loads ?? 0) > 0, "the other request has loaded");
@@ -129,6 +135,9 @@ describe("Request and settings tabs", () => {
 		await eventually(async () => (await other.view.call("testText", ".cm-content")) !== undefined, "its body is shown");
 		await new Promise((resolve) => setTimeout(resolve, 500));
 		assert.equal(await other.view.call("testText", ".carbonwire-json-problem"), undefined);
+		assert.ok(await other.view.call("testClick", format));
+		const formatted = '{\n  "a": 1, // why\n  // "old": true,\n  "id": {{tabsBase}},\n}';
+		await eventually(async () => JSON.stringify((await api.app.store.loadRequest(fine)).http?.body).includes(JSON.stringify(formatted)), "the formatted body is saved, comments and variables kept");
 		assert.deepEqual(api.panels.problems, []);
 		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
 		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");

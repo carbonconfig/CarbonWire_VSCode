@@ -4,7 +4,7 @@ import type { Environment, Folder, HttpRequest, OpenCollection } from "../core/m
 import type { SendResult } from "../core/sender";
 import { basename, dirname, stem } from "../core/storage/paths";
 import { COLLECTION_FILE, FOLDER_FILE } from "../core/storage/tree";
-import type { DraftState, RequestHost, RequestTabState, RequestView, SavedTab, SettingsHost, SettingsView } from "../ui/panel-protocol";
+import type { DraftState, RequestHost, RequestTabState, RequestView, SavedTab, SettingsHost, SettingsView, VariableFocus } from "../ui/panel-protocol";
 import { Rpc, type Api, type Handlers } from "../ui/rpc";
 import type { JsonAction } from "../ui/types";
 import type { CarbonWire } from "./carbonwire";
@@ -135,11 +135,16 @@ export class Panels implements vscode.Disposable {
 	}
 
 	/** Opens a collection, folder or environment file in its editor. */
-	openSettings(path: string): void {
+	/** `focus` picks out a variable's row, adding it when `create` is set. */
+	openSettings(path: string, focus?: VariableFocus): void {
 		const existing = [...this.settings].find((t) => t.file === path);
-		if (existing) return existing.reveal();
+		if (existing) {
+			existing.reveal();
+			if (focus) existing.focusVariable(focus);
+			return;
+		}
 		const panel = vscode.window.createWebviewPanel(SETTINGS_VIEW, settingsTitle(path), vscode.ViewColumn.Active, panelOptions(this.extensionUri, this.app.settings.keepHiddenTabsLoaded));
-		this.settings.add(new SettingsTab(this, panel, path));
+		this.settings.add(new SettingsTab(this, panel, path, focus));
 	}
 
 	openCookies(): void {
@@ -353,7 +358,11 @@ export class RequestTab {
 				for (const tab of this.panels.requests) if (tab !== this) tab.view.notify("setLayout", layout);
 			},
 			setWrap: (wrap) => app.setWrapResponseLines(wrap),
-			variableNames: (request) => app.variableNames(this.file, request),
+			variables: (request) => app.variables(this.file, request),
+			editVariable: async (request, name) => {
+				const target = await app.variableTarget(this.file, request, name);
+				if (target) this.panels.openSettings(target.file, { variable: name, create: target.create });
+			},
 			rename: async (name) => {
 				if (!this.file) {
 					if (this.draft) this.draft.name = name;
@@ -476,6 +485,7 @@ export class SettingsTab {
 		private readonly panels: Panels,
 		readonly panel: vscode.WebviewPanel,
 		public file: string,
+		private focus?: VariableFocus,
 	) {
 		panel.iconPath = tabIcon(panels.extensionUri, "settings");
 		panel.title = settingsTitle(file);
@@ -493,6 +503,10 @@ export class SettingsTab {
 
 	reveal(): void {
 		this.panel.reveal();
+	}
+
+	focusVariable(focus: VariableFocus): void {
+		this.view.notify("focusVariable", focus);
 	}
 
 	close(): void {
@@ -528,12 +542,15 @@ export class SettingsTab {
 			ready: async () => {
 				this.loads++;
 				const file = this.file;
+				// Only the first load picks out the variable; a reload keeps the page as it was.
+				const focus = this.focus;
+				this.focus = undefined;
 				const name = basename(file);
 				if (file === COOKIES_TAB) return { kind: "cookies", cookies: (await app.network.cookieJar()).all() };
 				try {
 					if (name === COLLECTION_FILE || name === FOLDER_FILE) {
 						const doc = (this.pending as OpenCollection | Folder | undefined) ?? (await app.store.loadDocument<OpenCollection | Folder>(file));
-						return { kind: name === COLLECTION_FILE ? "collection" : "folder", file, doc };
+						return { kind: name === COLLECTION_FILE ? "collection" : "folder", file, doc, focus };
 					}
 					const environment = (this.pending as Environment | undefined) ?? (await app.store.loadEnvironment(file));
 					const names = secretNames(environment);
@@ -543,7 +560,7 @@ export class SettingsTab {
 						const value = app.secrets.get(file, variable);
 						if (value !== null) secrets[variable] = value;
 					}
-					return { kind: "environment", file, environment, secrets, globals: app.isGlobals(file) };
+					return { kind: "environment", file, environment, secrets, globals: app.isGlobals(file), focus };
 				} catch (e) {
 					return { message: `Couldn't read ${file}: ${e instanceof Error ? e.message : String(e)}` };
 				}

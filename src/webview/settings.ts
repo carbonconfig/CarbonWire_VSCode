@@ -4,7 +4,7 @@ import type { Cookie } from "../core/cookies";
 import CookieManager from "../ui/CookieManager.svelte";
 import DefaultsEditor from "../ui/DefaultsEditor.svelte";
 import EnvironmentEditor from "../ui/EnvironmentEditor.svelte";
-import type { SavedTab, SettingsHost, SettingsView } from "../ui/panel-protocol";
+import type { SavedTab, SettingsHost, SettingsView, VariableFocus } from "../ui/panel-protocol";
 import { Rpc } from "../ui/rpc";
 import "../ui/styles.css";
 import { reportProblems } from "./problems";
@@ -13,9 +13,11 @@ import { vscodeApi } from "./vscode-api";
 import { noticeIfStalled } from "./stalled";
 
 const vscode = vscodeApi<SavedTab>();
-const view: { cookies?: { setCookies(cookies: Cookie[]): void } } = {};
+type Focusable = { focusVariable(focus: VariableFocus): void };
+const view: { cookies?: { setCookies(cookies: Cookie[]): void }; variables?: Focusable } = {};
 const rpc = new Rpc<SettingsView, SettingsHost>((message) => vscode.postMessage(message), {
 	setCookies: (cookies) => view.cookies?.setCookies(cookies),
+	focusVariable: (focus) => view.variables?.focusVariable(focus),
 });
 window.addEventListener("message", (e: MessageEvent) => void rpc.receive(e.data));
 reportProblems((message) => rpc.notify("problem", message));
@@ -37,7 +39,7 @@ if ("message" in state) {
 	vscode.setState({ file: state.file });
 	// Secret values were loaded with the tab, so the editor can read them straight away.
 	const secrets = new Map(Object.entries(state.secrets));
-	mount(EnvironmentEditor, {
+	const editor = mount(EnvironmentEditor, {
 		target: document.body,
 		props: {
 			initial: state.environment,
@@ -51,7 +53,9 @@ if ("message" in state) {
 			},
 			onSave: (env: Environment) => save(env),
 		},
-	});
+	}) as Focusable;
+	view.variables = editor;
+	if (state.focus) editor.focusVariable(state.focus);
 } else if (state.kind === "cookies") {
 	vscode.setState({ file: "carbonwire:cookies" });
 	view.cookies = mount(CookieManager, {
@@ -64,5 +68,7 @@ if ("message" in state) {
 	}) as { setCookies(cookies: Cookie[]): void };
 } else {
 	vscode.setState({ file: state.file });
-	mount(DefaultsEditor, { target: document.body, props: { initial: state.doc, kind: state.kind, onSave: save } });
+	const editor = mount(DefaultsEditor, { target: document.body, props: { initial: state.doc, kind: state.kind, onSave: save } }) as Focusable;
+	view.variables = editor;
+	if (state.focus) editor.focusVariable(state.focus);
 }

@@ -84,6 +84,28 @@ describe("Request and settings tabs", () => {
 		console.log(`Switching back to a hidden tab: ${times.join(", ")} ms`);
 	});
 
+	it("shows a variable's value on hover, and opens where it's set on Ctrl+Click", async () => {
+		const root = join(vscode.workspace.workspaceFolders![0]!.uri.fsPath, ROOT);
+		await writeFile(join(root, "opencollection.yml"), "opencollection: 1.0.0\ninfo:\n  name: Tabs\nrequest:\n  variables:\n    - name: tabsBase\n      value: http://example.test\n");
+		const file = `${ROOT}/vars.yml`;
+		await writeFile(join(root, "vars.yml"), `info:\n  name: vars\nhttp:\n  method: POST\n  url: "{{tabsBase}}/items?q={{tabsMissing}}"\n  body:\n    type: json\n    data: '{"v": "{{tabsBase}}"}'\n`);
+		await eventually(() => api.app.collectionFor(file) !== undefined, "the request is indexed");
+		api.panels.openRequest(file);
+		await eventually(() => (tabFor(file)?.loads ?? 0) > 0, "the tab has loaded");
+		const tab = tabFor(file)!;
+		const hover = (selector: string) => tab.view.call("testHover", selector);
+		const url = ".carbonwire-url-mirror mark[data-variable='tabsBase']";
+		await eventually(async () => (await hover(url))?.startsWith("http://example.test") === true, "the URL's variable shows its value");
+		assert.match((await hover(url))!, /From the Tabs collection.*\+Click to edit/);
+		await eventually(async () => (await hover(".carbonwire-url-mirror mark[data-variable='tabsMissing']"))?.startsWith("Not set") === true, "an unset variable says so");
+		await eventually(async () => (await hover(".cm-content .carbonwire-var"))?.startsWith("http://example.test") === true, "the body's variable shows its value");
+
+		await tab.view.call("testHover", url, true);
+		await eventually(() => [...api.panels.settings].some((t) => t.file === `${ROOT}/opencollection.yml`), "the collection's settings open");
+		assert.deepEqual(api.panels.problems, []);
+		await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+	});
+
 	it("sends an unsaved request and keeps it in history", async () => {
 		api.panels.openDraft({ name: "Draft", request: { http: { method: "GET", url: url.replace("/items", "/small") } } });
 		await eventually(() => [...api.panels.requests].some((t) => !t.file && t.panel.title === "Draft" && t.loads > 0), "the draft has loaded");

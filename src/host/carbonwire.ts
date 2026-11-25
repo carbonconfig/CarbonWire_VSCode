@@ -9,9 +9,9 @@ import { insertKey, type SortOrder } from "../core/storage/order";
 import { basename, dirname, joinPath, movedPath, stem } from "../core/storage/paths";
 import { CollectionStore } from "../core/storage/store";
 import { Exclusions } from "../core/storage/exclude";
-import { compare, isYaml, type CollectionNode } from "../core/storage/tree";
+import { COLLECTION_FILE, compare, FOLDER_FILE, isYaml, type CollectionNode } from "../core/storage/tree";
 import { TransportError, type SendProgress, type Transport } from "../core/transport/types";
-import { mergeVariables, resolveEnvironment } from "../core/variables";
+import { describeScope, isDynamicVariable, mergeVariables, resolveEnvironment, variableValue, type SourceLayer, type VariableInfo } from "../core/variables";
 import type { ConsoleEntry, EnvironmentEntry, RequestLayout } from "../ui/types";
 import { CollectionIndex } from "./collection-index";
 import { debounce } from "./debounce";
@@ -369,11 +369,25 @@ export class CarbonWire implements vscode.Disposable {
 		this.consoleEmitter.fire(entry);
 	}
 
-	/** Names of every variable the request can use with the active environment, for highlighting. */
-	async variableNames(path: string | undefined, request: HttpRequest): Promise<string[]> {
-		const { requestScope } = await import("../core/sender");
-		const scoped = await this.scopeFor(path, request, requestScope).catch(() => undefined);
-		return scoped ? [...scoped.scope.keys()] : [];
+	/** Every variable the request can use with the active environment, its value and where it's set, for highlighting and hovers. */
+	async variables(path: string | undefined, request: HttpRequest): Promise<VariableInfo[]> {
+		const layers = await this.variableLayers(path, request).catch(() => undefined);
+		return layers ? describeScope(layers) : [];
+	}
+
+	/**
+	 * Where Ctrl+Click on a variable goes: the file that sets it, or for one that isn't set, the active
+	 * environment, else globals, where it's added. Undefined for request and dynamic variables.
+	 */
+	async variableTarget(path: string | undefined, request: HttpRequest, name: string): Promise<{ file: string; create: boolean } | undefined> {
+		const info = (await this.variables(path, request)).find((v) => v.name === name);
+		if (info) return info.file ? { file: info.file, create: false } : undefined;
+		if (isDynamicVariable(name)) return undefined;
+		const environment = this.activeEnvironment();
+		const file = environment ? this.environmentFiles(environment)[0] : this.globalsPath();
+		if (!file) return undefined;
+		if (!environment && !this.store.exists(file)) await this.store.saveDocument(file, { name: "globals", variables: [] });
+		return { file, create: true };
 	}
 
 	/** Follows a rename or move made in CarbonWire or elsewhere in VS Code. Both report it, so it's safe to call twice. */
@@ -414,20 +428,50 @@ export class CarbonWire implements vscode.Disposable {
 		return { root, context, scope: requestScope(context, request, variables, globals) };
 	}
 
+	/** The scopes {@link scopeFor} layers, with their names and files. */
+	private async variableLayers(path: string | undefined, request: HttpRequest): Promise<SourceLayer[]> {
+		await this.index.ready();
+		const collection = path === undefined ? undefined : this.collectionFor(path);
+		if (path !== undefined && !collection) return [];
+		const root = collection?.root ?? "";
+		const context = collection && path ? await this.store.loadContext(root, path) : undefined;
+		const name = this.activeEnvironment();
+		const [environment, globals] = await Promise.all([this.loadVariableFiles(name ? this.environmentFiles(name) : []), this.loadVariableFiles(this.globalsFiles())]);
+		const dirs: string[] = [];
+		if (path !== undefined) for (let dir = dirname(path); dir !== root && dir !== ""; dir = dirname(dir)) dirs.unshift(dir);
+		return [
+			{ source: "globals", ...globals },
+			{ source: "collection", variables: context?.chain[0]?.variables, label: collection?.name, file: collection && joinPath(root, COLLECTION_FILE) },
+			{ source: "environment", label: name, ...environment },
+			...(context?.chain.slice(1) ?? []).map((defaults, i): SourceLayer => ({ source: "folder", variables: defaults?.variables, label: basename(dirs[i]!), file: joinPath(dirs[i]!, FOLDER_FILE) })),
+			{ source: "request", variables: request.runtime?.variables },
+		];
+	}
+
 	private globalsFiles(): string[] {
 		return this.environmentsFolders().map((folder) => joinPath(folder, GLOBALS_FILE)).filter((path) => this.store.exists(path));
 	}
 
 	/** Same-named environment files, secrets included, merged into one. */
 	private async loadVariables(paths: readonly string[]): Promise<Variable[]> {
-		const resolved = await Promise.all(
+		return (await this.loadVariableFiles(paths)).variables;
+	}
+
+	/** Merged as {@link loadVariables} does, plus which file each variable's value comes from and which are secret. */
+	private async loadVariableFiles(paths: readonly string[]): Promise<{ variables: Variable[]; secrets: Set<string>; file: (name: string) => string | undefined }> {
+		const loaded = await Promise.all(
 			paths.map(async (path) => {
 				const environment = await this.store.loadEnvironment(path);
-				await this.secrets.load(path, secretNames(environment));
-				return resolveEnvironment(environment, (variable) => this.secrets.get(path, variable));
+				const secret = secretNames(environment);
+				await this.secrets.load(path, secret);
+				return { path, secret, variables: resolveEnvironment(environment, (variable) => this.secrets.get(path, variable)) };
 			}),
 		);
-		return mergeVariables(resolved);
+		// mergeVariables takes the first value that isn't empty, else the first.
+		const from = (name: string) => loaded.find((l) => l.variables.some((v) => v.name === name && variableValue(v))) ?? loaded.find((l) => l.secret.includes(name) || l.variables.some((v) => v.name === name));
+		const variables = mergeVariables(loaded.map((l) => l.variables));
+		const secrets = new Set(variables.flatMap((v) => (from(v.name)?.secret.includes(v.name) ? [v.name] : [])));
+		return { variables, secrets, file: (name) => (from(name) ?? loaded[0])?.path };
 	}
 
 	/** Relative body files are inside the collection; absolute ones are read from anywhere on disk. */

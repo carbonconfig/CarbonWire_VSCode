@@ -3,6 +3,10 @@ import type { Cookie } from "../core/cookies";
 import type { HeaderPreset } from "../core/header-presets";
 import type { Environment, Folder, HttpRequest, HttpRequestHeader, OpenCollection } from "../core/model";
 import type { SendResult } from "../core/sender";
+import type { VariableInfo } from "../core/variables";
+import type { VariableFocus } from "./focus-row";
+
+export type { VariableFocus };
 import type { SendProgress } from "../core/transport/types";
 import type { EnvironmentEntry, JsonAction, RequestLayout } from "./types";
 
@@ -55,7 +59,9 @@ export type RequestHost = {
 	openEnvironment(path: string): void;
 	setLayout(layout: RequestLayout): void;
 	setWrap(wrap: boolean): void;
-	variableNames(request: HttpRequest): string[];
+	variables(request: HttpRequest): VariableInfo[];
+	/** Ctrl+Click on a variable: opens where it's set, or adds it to the active environment. */
+	editVariable(request: HttpRequest, name: string): void;
 	/** Returns the name actually used, or undefined if renaming failed. */
 	rename(name: string): string | undefined;
 	copyCurl(request: HttpRequest): void;
@@ -93,11 +99,13 @@ export type RequestView = {
 	/** For tests: the tab's view and what the response pane says, and a click on an element in the page. */
 	testState(): { view: TabView; text: string } | undefined;
 	testClick(selector: string, type?: "click" | "dblclick"): boolean;
+	/** For tests: the variable tooltip's text after hovering the middle of an element, or Ctrl/Cmd+Click there. */
+	testHover(selector: string, click?: boolean): string | undefined;
 };
 
 export type SettingsTabState =
-	| { kind: "collection" | "folder"; file: string; doc: OpenCollection | Folder }
-	| { kind: "environment"; file: string; environment: Environment; secrets: Record<string, string>; globals?: boolean }
+	| { kind: "collection" | "folder"; file: string; doc: OpenCollection | Folder; focus?: VariableFocus }
+	| { kind: "environment"; file: string; environment: Environment; secrets: Record<string, string>; globals?: boolean; focus?: VariableFocus }
 	| { kind: "cookies"; cookies: Cookie[] };
 
 /** Methods the extension exposes to a collection, folder or environment tab. */
@@ -118,4 +126,5 @@ export type SettingsHost = {
 /** The cookie manager refreshes when the jar changes; other settings tabs reload after a rename. */
 export type SettingsView = {
 	setCookies(cookies: Cookie[]): void;
+	focusVariable(focus: VariableFocus): void;
 };

@@ -48,6 +48,9 @@
 	--background-modifier-error: var(--vscode-inputValidation-errorBackground, var(--vscode-errorForeground));
 	--background-modifier-message: var(--vscode-inputValidation-infoBackground, var(--vscode-editorWidget-background));
 	--shadow-s: 0 2px 8px var(--vscode-widget-shadow, transparent);
+	--cw-tip-background: var(--vscode-editorHoverWidget-background, var(--background-secondary));
+	--cw-tip-foreground: var(--vscode-editorHoverWidget-foreground, var(--text-normal));
+	--cw-tip-border: var(--vscode-editorHoverWidget-border, var(--background-modifier-border));
 	--nav-indentation-guide-color: var(--vscode-tree-indentGuidesStroke);
 	--nav-indentation-guide-width: 1px;
 

@@ -66,6 +66,20 @@ const rpc = new Rpc<RequestView, RequestHost>((message) => vscode.postMessage(me
 		target?.dispatchEvent(new MouseEvent(type, { bubbles: true }));
 		return target !== null;
 	},
+	testHover: async (selector, click) => {
+		const target = document.querySelector<HTMLElement>(selector);
+		if (!target) return undefined;
+		// A variable wrapped over two lines has its middle between them, so aim at its first line.
+		const r = target.getClientRects()[0] ?? target.getBoundingClientRect();
+		const at = { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+		if (click) {
+			target.dispatchEvent(new MouseEvent("mousedown", { ...at, button: 0, ctrlKey: true, metaKey: true }));
+			return "";
+		}
+		target.dispatchEvent(new MouseEvent("mousemove", at));
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		return document.querySelector(".carbonwire-var-tip")?.textContent ?? undefined;
+	},
 });
 window.addEventListener("message", (e: MessageEvent) => void rpc.receive(e.data));
 reportProblems((message) => rpc.notify("problem", message));
@@ -114,7 +128,8 @@ if ("message" in state) {
 		openEnvironment: (path) => rpc.notify("openEnvironment", path),
 		setLayout: (layout) => rpc.notify("setLayout", layout),
 		setWrap: (wrap) => rpc.notify("setWrap", wrap),
-		variableNames: (request) => rpc.call("variableNames", request),
+		variables: (request) => rpc.call("variables", request),
+		editVariable: (request, name) => rpc.notify("editVariable", request, name),
 		rename: async (name) => {
 			const used = await rpc.call("rename", name);
 			if (used !== undefined) keepDraft(view.editor?.snapshot() ?? state.request, used);

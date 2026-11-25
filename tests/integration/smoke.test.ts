@@ -6,6 +6,7 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import { findNode } from "../../src/core/storage/order";
+import { MASK } from "../../src/core/variables";
 import type { TestApi } from "../../src/extension";
 import type { CarbonWire } from "../../src/host/carbonwire";
 
@@ -76,6 +77,19 @@ describe("CarbonWire in VS Code", () => {
 		const echo = JSON.parse(new TextDecoder().decode(result.response.body)) as unknown;
 		assert.deepEqual(echo, { url: "/products?limit=5", auth: "Bearer s3cret", collection: "shop" });
 		await eventually(async () => (await app.history.latestFor(LIST))?.response?.status === 200, "the send is in history");
+	});
+
+	it("tells each variable's value and where it's set, with secrets masked, for hovers", async () => {
+		const request = await app.store.loadRequest(LIST);
+		const variables = new Map((await app.variables(LIST, request)).map((v) => [v.name, v]));
+		assert.equal(variables.get("baseUrl")?.source, "environment");
+		assert.equal(variables.get("baseUrl")?.file, ENVIRONMENT);
+		assert.match(variables.get("baseUrl")?.value ?? "", /^http:\/\/127\.0\.0\.1:\d+$/);
+		assert.deepEqual({ ...variables.get("token") }, { name: "token", value: MASK, source: "environment", label: "local", file: ENVIRONMENT, secret: true });
+		assert.deepEqual(await app.variableTarget(LIST, request, "token"), { file: ENVIRONMENT, create: false });
+		// One that isn't set is added to the active environment; dynamic ones go nowhere.
+		assert.deepEqual(await app.variableTarget(LIST, request, "missing"), { file: ENVIRONMENT, create: true });
+		assert.equal(await app.variableTarget(LIST, request, "$randomInt"), undefined);
 	});
 
 	it("reuses connections, which VS Code's patched http module would stop", async () => {
